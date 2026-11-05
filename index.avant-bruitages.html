@@ -1,0 +1,1452 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Le Souffleur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* Layout: one column of three stage-like steps; rehearsal = prompter (left) + script (right) */
+:root {
+  --bg: #f5f3f7; --surface: #ffffff; --sunk: #ece8f0; --ink: #1d1a22; --muted: #6a6373; --line: #ddd7e4;
+  --accent: #8a1c2f; --accent-ink: #ffffff; --accent-soft: #f6e3e6;
+  --good: #2c7a4b; --warn: #a56300; --bad: #b3261e; --mask: #d5cfdc;
+  --f-display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131116; --surface: #1d1a21; --sunk: #26222b; --ink: #ece8f1; --muted: #a39cad; --line: #36313d;
+  --accent: #e45b70; --accent-ink: #1b0a0e; --accent-soft: #3a1b22;
+  --good: #5cc48a; --warn: #e3a13b; --bad: #ff7d72; --mask: #3d3744; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #131116; --surface: #1d1a21; --sunk: #26222b; --ink: #ece8f1; --muted: #a39cad; --line: #36313d;
+  --accent: #e45b70; --accent-ink: #1b0a0e; --accent-soft: #3a1b22;
+  --good: #5cc48a; --warn: #e3a13b; --bad: #ff7d72; --mask: #3d3744; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); }
+[hidden] { display: none !important; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 500; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.4rem; letter-spacing: .01em; }
+h1 em { color: var(--accent); }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 62ch; }
+.eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
+.muted { color: var(--muted); }
+.small { font-size: .88rem; }
+header.top { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+.steps { display: flex; flex-direction: column; gap: 18px; }
+.step-head { display: flex; gap: 14px; align-items: baseline; }
+.step-num { font-family: var(--f-display); font-style: italic; font-size: 1.6rem; color: var(--accent); line-height: 1; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } h1 { font-size: 1.9rem; } }
+
+textarea { width: 100%; min-height: 220px; resize: vertical; font: .92rem/1.5 var(--f-body); padding: 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); }
+select, input[type=number] { font: inherit; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); max-width: 100%; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: .88rem; color: var(--muted); }
+input[type=range] { accent-color: var(--accent); }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+.check { display: flex; gap: 8px; align-items: center; font-size: .94rem; }
+
+button, .btn { font: inherit; font-weight: 700; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; display: inline-flex; gap: 8px; align-items: center; }
+button:hover, .btn:hover { border-color: var(--muted); }
+button:focus-visible, .btn:focus-within, select:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.big { font-size: 1.1rem; padding: 12px 22px; }
+button.ghost { background: transparent; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.btn input[type=file] { display: none; }
+kbd { font: .75rem var(--f-body); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: .9rem; background: var(--surface); }
+.role { cursor: pointer; }
+.role input { position: absolute; opacity: 0; pointer-events: none; }
+.role:has(input:checked) { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.role:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.role .n { font-size: .78rem; opacity: .75; font-variant-numeric: tabular-nums; }
+.badge { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.note { border-left: 3px solid var(--warn); padding: 8px 12px; background: var(--sunk); border-radius: 0 6px 6px 0; font-size: .92rem; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; font-size: .92rem; color: var(--muted); }
+.stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.voices { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.voices-box { overflow-x: auto; }
+.voices td, .voices th { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.voices th { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.voices .who { font-family: var(--f-display); font-weight: 700; letter-spacing: .04em; }
+.voices select { width: 100%; min-width: 150px; }
+details summary { cursor: pointer; font-weight: 700; }
+details pre { white-space: pre-wrap; background: var(--sunk); padding: 12px; border-radius: 8px; font-size: .85rem; }
+
+/* Rehearsal */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.bar .spacer { flex: 1; }
+.bar .where { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .92rem; }
+.stage { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
+.prompter { display: flex; flex-direction: column; gap: 14px; }
+.cue { color: var(--muted); font-size: .95rem; padding: 0 4px; min-height: 1.5em; }
+.cue b { font-family: var(--f-display); letter-spacing: .05em; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-height: 240px; }
+.card.mine { border: 2px solid var(--accent); box-shadow: 0 0 0 6px var(--accent-soft); }
+.speaker { font-family: var(--f-display); font-size: 1.05rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.speaker .you { font-family: var(--f-body); font-size: .72rem; letter-spacing: .1em; background: var(--accent); color: var(--accent-ink); padding: 2px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+.aside { font-style: italic; color: var(--muted); }
+.line-text { font-size: 1.45rem; line-height: 1.6; }
+.line-text em.stg { color: var(--muted); font-size: .9em; }
+.line-text.stagedir { font-style: italic; color: var(--muted); font-size: 1.2rem; }
+.line-text.headline { font-family: var(--f-display); font-size: 1.8rem; }
+.w { border-radius: 4px; transition: background .2s, color .2s; }
+.w.masked { color: transparent; background: var(--mask); user-select: none; }
+.w.hit { color: var(--good); }
+.w.near { color: var(--warn); }
+.status { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: .95rem; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.live { background: var(--bad); animation: pulse 1.2s infinite; }
+.dot.talk { background: var(--accent); }
+@keyframes pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } .w { transition: none; } }
+.heard { background: var(--sunk); border-radius: 8px; padding: 10px 12px; font-size: .95rem; min-height: 2.6em; color: var(--ink); }
+.heard:empty::before { content: "Ce que j'entends s'affichera ici."; color: var(--muted); }
+.progress { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: var(--good); transition: width .2s; }
+.turn-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.script { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; max-height: 72vh; overflow-y: auto; padding: 8px 0; }
+.sl { padding: 6px 16px; cursor: pointer; font-size: .9rem; border-left: 3px solid transparent; }
+.sl:hover { background: var(--sunk); }
+.sl .who { font-family: var(--f-display); font-weight: 700; letter-spacing: .05em; font-size: .82rem; margin-right: 6px; }
+.sl.stage, .sl.note { font-style: italic; color: var(--muted); }
+.sl.heading { font-family: var(--f-display); font-weight: 700; padding-top: 12px; }
+.sl.mine .who { color: var(--accent); }
+.sl.is-current { background: var(--accent-soft); border-left-color: var(--accent); }
+.sl .sc { float: right; margin-left: 8px; }
+.pg { font-size: .7rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); padding: 10px 16px 2px; font-weight: 700; border-top: 1px dashed var(--line); }
+
+/* Report */
+.score { font-variant-numeric: tabular-nums; font-weight: 700; font-size: .8rem; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.s-good { color: var(--good); } .s-mid { color: var(--warn); } .s-low { color: var(--bad); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.kpi .v { font-family: var(--f-display); font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi .l { font-size: .82rem; color: var(--muted); }
+.entries { display: flex; flex-direction: column; gap: 12px; }
+.entry { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.entry-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: .85rem; color: var(--muted); }
+.diff { font-size: 1.05rem; line-height: 1.75; }
+.d-ok { }
+.d-near { text-decoration: underline dotted var(--warn); text-underline-offset: 4px; }
+.d-miss { color: var(--bad); text-decoration: line-through; }
+.d-sub { color: var(--bad); font-weight: 700; }
+.d-said { font-size: .78em; color: var(--warn); font-style: italic; margin: 0 2px; }
+.d-extra { font-size: .82em; color: var(--muted); font-style: italic; }
+.heard-line { font-size: .88rem; color: var(--muted); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: .85rem; }
+.hist { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.hist td, .hist th { padding: 6px; border-bottom: 1px solid var(--line); text-align: left; }
+.hist th { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.hist td.num { font-variant-numeric: tabular-nums; }
+.hist-box { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ SETUP ============ -->
+<section id="view-setup">
+  <header class="top">
+    <span class="eyebrow">Répétition à voix haute</span>
+    <h1>Le <em>Souffleur</em></h1>
+    <p class="lede">Les autres personnages vous donnent la réplique. Vous dites votre texte, l'application écoute et compare. Quand vous arrêtez, vous voyez ce qui était juste, ce qui manquait et ce qu'il faut retravailler.</p>
+  </header>
+
+  <div id="env-warn" class="note" hidden></div>
+
+  <div class="steps">
+    <section class="step">
+      <div class="step-head"><span class="step-num">1</span><div><h2>La pièce</h2><p class="muted small">Collez le texte, ou chargez un fichier .txt ou .pdf.</p></div></div>
+      <div class="row">
+        <label class="btn" for="file-input">Charger un fichier…<input type="file" id="file-input" accept=".txt,.pdf,text/plain,application/pdf"></label>
+        <button id="btn-parse" class="primary">Analyser le texte</button>
+        <span id="src-badge" class="badge" hidden>Exemple</span>
+        <button id="btn-save-txt" class="ghost">Enregistrer le texte (.txt)</button>
+        <label class="check small" for="pdf-limit">PDF : lire seulement les <input type="number" id="pdf-limit" min="1" step="1" placeholder="toutes" style="width:6em"> premières pages</label>
+        <span id="parse-msg" class="muted small"></span>
+      </div>
+      <div id="ocr-box" class="steps" style="gap:8px" hidden>
+        <div class="progress" aria-hidden="true"><div id="ocr-bar"></div></div>
+        <div class="row"><span id="ocr-msg" class="small"></span><button id="btn-ocr-cancel" class="ghost">Interrompre</button></div>
+        <p class="muted small">Un PDF scanné est lu page par page (OCR, en français). Comptez quelques secondes par page. Une fois fini, enregistrez le texte pour ne pas refaire l'opération.</p>
+      </div>
+      <textarea id="raw" spellcheck="false" aria-label="Texte de la pièce"></textarea>
+      <div class="stats" id="parse-stats"></div>
+      <details>
+        <summary>Formats reconnus</summary>
+        <pre>Une réplique commence par le nom du personnage en MAJUSCULES :
+  CLAIRE. — Je range parce que je ne dors pas.
+  CLAIRE : Je range parce que je ne dors pas.
+  CLAIRE            (nom seul sur sa ligne, texte en dessous)
+  ANTOINE, à part. — Elle va encore raconter sa vie.
+Les noms en minuscules marchent aussi avec deux-points :  Claire : Bonjour.
+
+Didascalies : une ligne entre parenthèses, par ex. (On sonne.)
+Les parenthèses dans une réplique ne sont ni lues ni évaluées.
+Titres : ACTE …, SCÈNE …, TABLEAU …, PROLOGUE
+
+Pages : un PDF garde ses pages. Dans un texte collé, mettez une ligne
+  Page 12
+au début de chaque page.</pre>
+      </details>
+    </section>
+
+    <section class="step" id="step-role">
+      <div class="step-head"><span class="step-num">2</span><div><h2>Votre rôle</h2><p class="muted small">Ce personnage n'est pas lu : c'est vous qui le jouez.</p></div></div>
+      <div class="chips" id="roles" role="radiogroup" aria-label="Votre personnage"></div>
+      <div class="row">
+        <label class="field" for="start-page">Commencer à la page<select id="start-page"></select></label>
+        <label class="field" for="end-page">S'arrêter après la page<select id="end-page"></select></label>
+        <span class="muted small" id="range-info"></span>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="step-head"><span class="step-num">3</span><div><h2>Les voix et les réglages</h2><p class="muted small">Une voix et une hauteur par personnage. Les voix « Natural » d'Edge sont les plus naturelles.</p></div></div>
+      <div class="voices-box"><table class="voices" id="voices"></table></div>
+      <div class="grid2">
+        <div class="steps" style="gap:10px">
+          <label class="field" for="rate">Débit des voix : <span id="rate-v"></span><input type="range" id="rate" min="0.7" max="1.4" step="0.05"></label>
+          <label class="field" for="silence">Fin de ma réplique après un silence de : <span id="silence-v"></span><input type="range" id="silence" min="1" max="6" step="0.5"></label>
+        </div>
+        <div class="steps" style="gap:8px">
+          <label class="check" for="opt-autoend"><input type="checkbox" id="opt-autoend"> Passer à la suite automatiquement après ma réplique</label>
+          <label class="check" for="opt-showmine"><input type="checkbox" id="opt-showmine"> Afficher mon texte (sinon il se dévoile au fur et à mesure)</label>
+          <label class="check" for="opt-autohint"><input type="checkbox" id="opt-autohint"> Souffler les premiers mots si je reste muet 7 s</label>
+          <label class="check" for="opt-stage"><input type="checkbox" id="opt-stage"> Lire les didascalies</label>
+          <label class="check" for="opt-announce"><input type="checkbox" id="opt-announce"> Annoncer le nom avant chaque réplique</label>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btn-start" class="primary big">Lever le rideau</button>
+        <span class="muted small">Pendant la séance : <kbd>Espace</kbd> suite · <kbd>S</kbd> souffler · <kbd>P</kbd> pause · <kbd>Échap</kbd> arrêter</span>
+      </div>
+    </section>
+
+    <section class="step" id="hist-step" hidden>
+      <div class="step-head"><span class="step-num">·</span><h2>Séances précédentes</h2></div>
+      <div class="hist-box"><table class="hist" id="hist"></table></div>
+    </section>
+  </div>
+</section>
+
+<!-- ============ REHEARSAL ============ -->
+<section id="view-run" hidden>
+  <div class="bar">
+    <button id="btn-pause">Pause</button>
+    <button id="btn-prev" title="Réplique précédente">◀ Précédente</button>
+    <button id="btn-next" class="primary" title="Espace">Suite ▶</button>
+    <span class="where" id="where"></span>
+    <span class="spacer"></span>
+    <button id="btn-stop">Arrêter et voir le bilan</button>
+  </div>
+  <div class="stage">
+    <div class="prompter">
+      <div class="cue" id="cue"></div>
+      <div class="card" id="card">
+        <div class="speaker" id="cur-speaker"></div>
+        <div class="aside" id="cur-aside" hidden></div>
+        <div class="line-text" id="cur-text"></div>
+        <div id="mine-tools" hidden>
+          <div class="steps" style="gap:10px">
+            <div class="progress" aria-hidden="true"><div id="turn-progress"></div></div>
+            <div class="heard" id="heard" aria-live="polite"></div>
+            <div class="turn-tools">
+              <button id="btn-hint">Souffler <kbd>S</kbd></button>
+              <button id="btn-reveal" class="ghost">Tout afficher</button>
+              <button id="btn-done" class="primary">J'ai fini <kbd>Espace</kbd></button>
+            </div>
+          </div>
+        </div>
+        <div class="status"><span class="dot" id="dot"></span><span id="status"></span></div>
+      </div>
+    </div>
+    <div class="script" id="script" aria-label="Texte de la pièce"></div>
+  </div>
+</section>
+
+<!-- ============ REPORT ============ -->
+<section id="view-report" hidden>
+  <div class="steps">
+    <header class="top">
+      <span class="eyebrow" id="rep-eyebrow"></span>
+      <h1>Bilan de la <em>séance</em></h1>
+      <p class="lede" id="rep-lede"></p>
+    </header>
+    <div class="kpis" id="rep-kpis"></div>
+    <div class="row">
+      <button id="btn-again" class="primary">Reprendre au même endroit</button>
+      <button id="btn-retry-weak">Rejouer la première réplique à retravailler</button>
+      <button id="btn-copy">Copier le bilan</button>
+      <button id="btn-back" class="ghost">Retour aux réglages</button>
+      <span id="copy-msg" class="muted small"></span>
+    </div>
+    <div class="legend muted">
+      <span>mot juste</span><span class="d-near">approximatif</span><span class="d-miss">oublié</span><span><span class="d-sub">remplacé</span><span class="d-said">par…</span></span><span class="d-extra">+ en trop</span>
+    </div>
+    <section class="steps" id="rep-weak-box"><h2>À retravailler</h2><div class="entries" id="rep-weak"></div></section>
+    <section class="steps"><h2>Toutes vos répliques</h2><div class="entries" id="rep-all"></div></section>
+  </div>
+</section>
+
+</div>
+<script>
+'use strict';
+/* ---------------------------------------------------------------- storage */
+const STORE = 'souffleur.v1';
+function loadStore() { try { return JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { return {}; } }
+function saveStore() { try { localStorage.setItem(STORE, JSON.stringify(P)); } catch (e) { /* storage unavailable */ } }
+const P = loadStore();
+P.settings = Object.assign({ rate: 1, silence: 2.5, autoEnd: true, showMine: false, autoHint: true, readStage: false, announce: false }, P.settings || {});
+P.voices = P.voices || {};
+P.history = P.history || [];
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------------------------------------------------------------- sample */
+const SAMPLE = `L'HEURE DES VISITES
+(Exemple — remplacez ce texte par votre pièce)
+
+Page 1
+ACTE I
+SCÈNE 1
+(Un salon. Claire range des livres. Antoine entre, une valise à la main.)
+ANTOINE. — Tu ranges encore ? Il est presque minuit.
+CLAIRE. — Je range parce que je ne dors pas. Et je ne dors pas parce que tu pars demain.
+ANTOINE. — Je pars trois jours, Claire. Trois jours, ce n'est pas un voyage, c'est un week-end qui a pris de l'élan.
+CLAIRE. — Tu disais la même chose l'année dernière. Tu es revenu au bout de deux mois, avec un chapeau ridicule et un accent que personne n'a compris.
+ANTOINE. — Le chapeau était très bien.
+CLAIRE. — Le chapeau était orange.
+(On sonne.)
+ANTOINE. — Tu attends quelqu'un ?
+CLAIRE. — À minuit ? Personne. Sauf peut-être les ennuis.
+
+Page 2
+SCÈNE 2
+MADAME VERNET, entrant sans attendre. — Pardonnez-moi, la porte était ouverte, et la lumière aussi. Quand tout est ouvert chez les gens, j'entre : c'est une question de politesse.
+ANTOINE. — Madame Vernet… Vous savez l'heure qu'il est ?
+MADAME VERNET. — Évidemment. C'est l'heure où l'on entend tout à travers les murs. Et j'ai entendu le mot « valise ».
+CLAIRE. — Antoine part trois jours.
+MADAME VERNET. — Trois jours ! Mon mari aussi partait trois jours. Il m'envoyait des cartes postales de pays que je ne trouvais pas sur la carte.
+ANTOINE, à part. — Elle va encore raconter toute sa vie.
+MADAME VERNET. — Je vous ai entendu, jeune homme. Les murs, je vous dis.
+CLAIRE. — Asseyez-vous, madame Vernet. Puisque personne ne dort, autant que ce soit en bonne compagnie.
+`;
+
+/* ---------------------------------------------------------------- parsing */
+const UP = "A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸŒÆ";
+const LOW = "a-zàâäçéèêëîïôöùûüÿœæ";
+const RE_UP = new RegExp(`^((?:[${UP}][${UP}'’\\-]*(?:\\.(?=\\s+[${UP}]))?)(?:\\s+[${UP}][${UP}'’\\-]*(?:\\.(?=\\s+[${UP}]))?){0,3})\\s*(?:\\(([^)]*)\\))?\\s*([:.,;—–]|-(?=\\s)|$)\\s*(.*)$`);
+const RE_MIX = new RegExp(`^([${UP}][${LOW}'’\\-]+(?:\\s+[${UP}${LOW}][${LOW}'’\\-]*){0,2})\\s*(?:\\(([^)]*)\\))?\\s*:\\s*(.*)$`);
+const RE_HEAD = /^(?:ACTE|Acte|SC[ÈE]NE|Sc[èe]ne|TABLEAU|Tableau|PROLOGUE|Prologue|[ÉE]PILOGUE|[ÉE]pilogue|ENTRACTE|Entracte)\b(?!\s+[a-zàâçéèêëîïôöùûü])(?=.{0,60}$)/;
+const EXCLUDED = /^(ACTE|SC[ÈE]NE|TABLEAU|PROLOGUE|[ÉE]PILOGUE|PERSONNAGES|DISTRIBUTION|FIN|RIDEAU|NOIR|ENTRACTE|PAGE|NOTE|NB|N\.B)\b/i;
+const RE_PAGE = /^[\s\-–—=_*]*page\s*(\d{1,4}[a-z]?|[IVXLC]{1,6})[\s\-–—=_*.]*$/i;
+
+function normalizeRaw(raw) {
+  raw = raw.replace(/\r\n?/g, '\n');
+  // Project Gutenberg wrapper
+  const st = raw.match(/^\*\*\* ?START OF.*$/m); if (st) raw = raw.slice(st.index + st[0].length);
+  const en = raw.match(/^\*\*\* ?END OF.*$/m); if (en) raw = raw.slice(0, en.index);
+  // Plain-text italics (_à part_) are stage directions: turn them into parentheses.
+  return raw.replace(/\(\s*_/g, '(').replace(/_([\s.:,;!?]*)\)/g, '$1)').replace(/_([^_]{1,400}?)_/g, '($1)');
+}
+function textToPages(raw) {
+  raw = normalizeRaw(raw);
+  const pages = [];
+  let cur = null, auto = 0;
+  const open = (label, implicit) => { cur = { label: String(label), lines: [], implicit: !!implicit }; pages.push(cur); };
+  raw.replace(/\r\n?/g, '\n').split('\f').forEach((chunk, ci) => {
+    if (ci > 0) { auto = (parseInt(cur && cur.label, 10) || auto) + 1; open(auto); }
+    for (const line of chunk.split('\n')) {
+      const m = line.match(RE_PAGE);
+      if (m) {
+        // Text before the first marker (title, cast list) belongs to the first marked page.
+        if (cur && cur.implicit) { cur.label = m[1]; cur.implicit = false; } else open(m[1]);
+        continue;
+      }
+      if (!cur) open('1', true);
+      cur.lines.push(line);
+    }
+  });
+  return pages.filter(p => p.lines.some(l => l.trim()));
+}
+
+const RE_UP_ASIDE = new RegExp(`^((?:[${UP}][${UP}'’\\-]*(?:\\.(?=\\s+[${UP}]))?)(?:\\s+[${UP}][${UP}'’\\-]*(?:\\.(?=\\s+[${UP}]))?){0,3})\\s*[,.]?\\s*\\(([^)]*)(\\)?)\\s*[.:,]?\\s*(?:[—–-]\\s*)?(.*)$`);
+const RE_JOINT = new RegExp(`^([${UP}][${UP}'’\\-]+)\\s*(?:\\/|\\s(?:et|ET|&)\\s)\\s*([${UP}][${UP}'’\\-]+)(?=\\s|\\(|[.:,]|$)`);
+function matchSpeaker(line) {
+  line = line.replace(RE_JOINT, '$1 ET $2');
+  const a = line.match(RE_UP_ASIDE);
+  if (a && a[1].replace(/[^A-Za-zÀ-ÿŒÆœæ]/g, '').length >= 2 && !/^[IVXLC]+$/.test(a[1].replace(/\s/g, ''))) {
+    return { key: normName(a[1]), aside: a[2].trim(), rest: a[3] ? a[4] : '', kind: 'up', strong: true, open: !a[3] };
+  }
+  let m = line.match(RE_UP);
+  if (m && m[1].replace(/[^A-Za-zÀ-ÿŒÆœæ]/g, '').length < 2) m = null;
+  if (m) {
+    const name = m[1];
+    if (/^[IVXLC]+$/.test(name.replace(/\s/g, ''))) return null;
+    let aside = m[2] || '', sep = m[3], rest = m[4] || '';
+    if (sep === '' && rest) return null;
+    let dashed = /^[—–-]/.test(rest);
+    if (sep === ',') {
+      const a = rest.match(/^([^—–]*?)[.,]?\s*[—–]\s*(.*)$/);
+      if (!a) return null;
+      aside = (aside ? aside + ' ' : '') + a[1]; rest = a[2]; dashed = true;
+    }
+    rest = rest.replace(/^[—–-]\s*/, '');
+    return { key: normName(name), aside: aside.trim(), rest, kind: 'up', strong: rest.length > 0 && (sep === ':' || dashed) };
+  }
+  m = line.match(RE_MIX);
+  if (m) return { key: normName(m[1]), aside: (m[2] || '').trim(), rest: m[3] || '', kind: 'mix', strong: false };
+  return null;
+}
+function normName(n) { return n.toUpperCase().replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim(); }
+
+// Groups spellings of one character: accents, article (LE DIRECTEUR / DIRECTEUR), "VOIX X", OCR speck ("E PHILIPPE"),
+// and full name vs. short name (JEAN-LOUIS BONNOT -> JEAN-LOUIS) when the short one is more frequent.
+function resolveAliases(raw) {
+  const strip = (k) => k.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/^VOIX\s+(?:DE\s+|D')?(?=\S)/, '').replace(/^[A-Z]\s+(?=\S{2})/, '')
+    .replace(/^(?:LE|LA|LES)\s+|^L['’]\s*/, '').trim();
+  const groups = new Map();
+  for (const [k, n] of Object.entries(raw)) {
+    const b = strip(k) || k;
+    const g = groups.get(b) || { b, keys: [], n: 0 };
+    g.keys.push([k, n]); g.n += n; groups.set(b, g);
+  }
+  const list = [...groups.values()].sort((a, b) => b.n - a.n);
+  for (const g of list) {
+    const named = g.keys.filter(([k]) => !/^VOIX\s/.test(k) && !/^[A-Z]\s/.test(k)).sort((a, b) => b[1] - a[1]);
+    g.canon = (named[0] || g.keys.slice().sort((a, b) => b[1] - a[1])[0])[0];
+  }
+  for (const g of list) {
+    const h = !/ ET /.test(g.b) && list.find(o => o !== g && o.n >= g.n && g.b.startsWith(o.b + ' '));
+    if (h) g.into = h;
+  }
+  const final = (g) => { let f = g; for (let s = 0; f.into && s < 10; s++) f = f.into; return f; };
+  const alias = new Map(), total = {};
+  for (const g of list) {
+    const f = final(g);
+    g.keys.forEach(([k]) => alias.set(k, f.canon));
+    total[f.canon] = (total[f.canon] || 0) + g.n;
+  }
+  return { alias, total };
+}
+
+function buildPlay(title, pages) {
+  const all = [];
+  pages.forEach((p, pi) => p.lines.forEach(l => all.push({ pi, l: l.replace(/\s+/g, ' ').trim() })));
+  // Everything before the first act or scene (title page, notes, cast list) is front matter, never dialogue.
+  const firstHead = all.findIndex(({ l }) => RE_HEAD.test(l));
+  const bodyStart = firstHead > 0 && all.slice(firstHead).some(({ l }) => matchSpeaker(l)) ? firstHead : 0;
+  const counts = { up: {}, mix: {} }, strong = {};
+  for (const { l } of all.slice(bodyStart)) {
+    if (!l || RE_HEAD.test(l)) continue;
+    const m = matchSpeaker(l);
+    if (!m || EXCLUDED.test(m.key)) continue;
+    counts[m.kind][m.key] = (counts[m.kind][m.key] || 0) + 1;
+    if (m.strong) strong[m.key] = true;
+  }
+  const { alias, total } = resolveAliases(counts.up);
+  const strongCanon = {};
+  Object.keys(strong).forEach(k => { if (alias.has(k)) strongCanon[alias.get(k)] = true; });
+  const upNames = Object.keys(total).filter(k => total[k] >= 2 || strongCanon[k]);
+  // Mixed-case "Name :" is only trusted when the play does not use the classic UPPERCASE convention.
+  const mixNames = upNames.length >= 2 ? [] : Object.keys(counts.mix).filter(k => counts.mix[k] >= 2);
+  const accepted = new Set([...upNames, ...mixNames]);
+  // "JEAN-LOUIS ET PHILIPPE (ensemble)": a reply said together belongs to each of its speakers.
+  const joint = new Map();
+  Object.keys(total).forEach(k => {
+    if (!/ ET /.test(k)) return;
+    const parts = k.split(' ET ').map(x => alias.get(x) || x);
+    if (parts.length >= 2 && parts.every(x => accepted.has(x) && !/ ET /.test(x))) { joint.set(k, parts); accepted.add(k); }
+  });
+
+  const items = [];
+  let cur = null, last = null, stage = null, asideOpen = null;
+  const flush = () => { if (cur) { cur.text = cur.text.trim(); if (cur.text) items.push(cur); cur = null; } };
+  const append = (t) => {
+    if (cur.text.endsWith('-') && /^[a-zà-ÿ]/.test(t)) cur.text = cur.text.slice(0, -1) + t;
+    else cur.text += (cur.text ? ' ' : '') + t;
+  };
+  const nextLine = (i) => { for (let k = i + 1; k < all.length; k++) if (all[k].l) return all[k].l; return ''; };
+  for (let i = 0; i < all.length; i++) {
+    const { pi, l } = all[i];
+    if (!l || /^\d{1,4}$/.test(l)) continue;
+    if (i < bodyStart) {
+      const prev = items[items.length - 1];
+      if (prev && prev.type === 'note' && prev.pi === pi) prev.text += '\n' + l;
+      else items.push({ type: 'note', pi, text: l });
+      continue;
+    }
+    if (/^(NOTES?\s*:|NOTES DE L'ÉDITEUR)/i.test(l)) break;
+    if (asideOpen) {
+      const k = l.indexOf(')');
+      if (k < 0 && asideOpen.aside.length < 600) { asideOpen.aside += ' ' + l; continue; }
+      asideOpen.aside = (asideOpen.aside + ' ' + (k < 0 ? l : l.slice(0, k))).trim();
+      const after = k < 0 ? '' : l.slice(k + 1).replace(/^[\s.:,;]*(?:[—–-]\s*)?/, '');
+      asideOpen = null;
+      if (after) append(after);
+      continue;
+    }
+    if (stage) {
+      stage.text += ' ' + l;
+      if (/[)\]][.\s]*$/.test(l) || stage.text.length > 600) stage = null;
+      continue;
+    }
+    if (RE_HEAD.test(l)) { flush(); items.push({ type: 'heading', pi, text: l }); last = null; continue; }
+    const m = matchSpeaker(l);
+    const key = m ? (m.kind === 'up' ? alias.get(m.key) || m.key : m.key) : null;
+    if (m && accepted.has(key) && (m.kind === 'up' || mixNames.length)) {
+      flush(); last = key;
+      const aside = /^VOIX\s/.test(m.key) && key !== m.key ? 'voix' + (m.aside ? ', ' + m.aside : '') : m.aside;
+      cur = { type: 'reply', pi, speaker: key, aside, text: '' };
+      if (joint.has(key)) { cur.parts = joint.get(key); cur.speaker = cur.parts.join(' / '); }
+      if (m.open) asideOpen = cur;
+      else if (m.rest) append(m.rest);
+      continue;
+    }
+    // "(Soudain) Bon Dieu !": a direction followed by dialogue on the same line is dialogue.
+    if (/^\([^)]{0,80}\)\s*[^\s.]/.test(l) && (cur || last)) {
+      if (!cur) cur = { type: 'reply', pi, speaker: last, aside: '', text: '' };
+      append(l);
+      continue;
+    }
+    if (/^[(\[]/.test(l)) {
+      // A short direction like "(un temps)" in the middle of a reply stays inside it.
+      const nl = nextLine(i);
+      const nm = nl ? matchSpeaker(nl) : null;
+      const nextIsSpeaker = !!(nm && accepted.has(alias.get(nm.key) || nm.key));
+      if (cur && /^\([^)]{1,60}\)[.\s]*$/.test(l) && nl && !nl.startsWith('(') && !RE_HEAD.test(nl) && !nextIsSpeaker) {
+        append(l);
+        continue;
+      }
+      flush();
+      const st = { type: 'stage', pi, text: l };
+      items.push(st);
+      if (!/[)\]][.\s]*$/.test(l)) stage = st;
+      continue;
+    }
+    if (cur) append(l);
+    else if (last) { cur = { type: 'reply', pi, speaker: last, aside: '', text: '' }; append(l); }
+    else {
+      const prev = items[items.length - 1];
+      if (prev && prev.type === 'note' && prev.pi === pi) prev.text += '\n' + l;
+      else items.push({ type: 'note', pi, text: l });
+    }
+  }
+  flush();
+
+  const charCount = {};
+  items.forEach((it, i) => {
+    it.idx = i;
+    if (it.type === 'reply') {
+      it.spoken = it.text.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+      (it.parts || [it.speaker]).forEach(s => { charCount[s] = (charCount[s] || 0) + 1; });
+    }
+  });
+  const chars = Object.keys(charCount).map(name => ({ name, count: charCount[name] })).sort((a, b) => b.count - a.count);
+  return { title, pages: pages.map(p => p.label), items, chars };
+}
+
+/* ---------------------------------------------------------------- PDF */
+const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const OCR_SCALE = 2.5;
+let ocrCancel = false;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if ([...document.scripts].some(s => s.src === src)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = () => resolve(); s.onerror = () => reject(new Error('Chargement impossible (connexion internet ?) : ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function pdfToText(file) {
+  if (!window.pdfjsLib) throw new Error("La lecture des PDF nécessite une connexion internet (bibliothèque pdf.js).");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  const limit = parseInt($('#pdf-limit').value, 10);
+  const last = limit > 0 ? Math.min(limit, pdf.numPages) : pdf.numPages;
+  for (let p = 1; p <= last; p++) {
+    setMsg(`Lecture du PDF… page ${p} / ${last}`);
+    const page = await pdf.getPage(p);
+    const width = page.getViewport({ scale: 1 }).width;
+    const tc = await page.getTextContent();
+    const lines = []; let cur = '', curX = 0, lastY = null, lastEnd = null;
+    const push = () => { if (cur.trim()) lines.push({ t: cur.replace(/\s+/g, ' ').trim(), x: curX }); cur = ''; lastEnd = null; };
+    for (const it of tc.items) {
+      if (typeof it.str !== 'string') continue;
+      const x = it.transform[4], y = it.transform[5];
+      if (lastY !== null && Math.abs(y - lastY) > 2) push();
+      if (!cur) curX = x;
+      if (cur && lastEnd !== null && x - lastEnd > 1.5 && !/\s$/.test(cur) && !/^\s/.test(it.str)) cur += ' ';
+      cur += it.str;
+      lastY = y; lastEnd = x + (it.width || 0);
+      if (it.hasEOL) { push(); lastY = null; }
+    }
+    push();
+    pages.push({ lines, width });
+  }
+  // A page whose only text is repeated on every page (watermark, banner) is a scan: read it by OCR.
+  const key = (l) => l.t.replace(/\d+/g, '#').toLowerCase();
+  const freq = {};
+  pages.forEach(pg => new Set(pg.lines.map(key)).forEach(k => { freq[k] = (freq[k] || 0) + 1; }));
+  const rep = Math.max(3, pages.length * 0.3);
+  const ownText = (pg) => pg.lines.filter(l => !(pages.length > 3 && freq[key(l)] >= rep)).reduce((n, l) => n + l.t.length, 0);
+  const scanned = pages.map((pg, i) => (ownText(pg) < 150 ? i : -1)).filter(i => i >= 0);
+  if (scanned.length) await ocrPages(pdf, pages, scanned);
+  return layoutToText(pages);
+}
+
+async function renderForOcr(pdf, num) {
+  const page = await pdf.getPage(num);
+  const vp = page.getViewport({ scale: OCR_SCALE });
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  // Only the scanned image is read: the PDF's own text (watermark) is not drawn.
+  ctx.fillText = () => {}; ctx.strokeText = () => {};
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  return c;
+}
+
+async function ocrPages(pdf, pages, list) {
+  const box = $('#ocr-box'), bar = $('#ocr-bar'), msg = $('#ocr-msg');
+  box.hidden = false; bar.style.width = '0%'; ocrCancel = false;
+  msg.textContent = `${list.length} page${list.length > 1 ? 's' : ''} scannée${list.length > 1 ? 's' : ''} : chargement de la reconnaissance de texte (OCR)…`;
+  try {
+    await loadScript(TESSERACT_URL);
+    const n = (navigator.hardwareConcurrency || 2) >= 4 ? 2 : 1;
+    const workers = [];
+    for (let i = 0; i < n; i++) workers.push(await Tesseract.createWorker('fra'));
+    let next = 0, done = 0; const t0 = Date.now();
+    const run = async (w) => {
+      while (next < list.length && !ocrCancel) {
+        const i = list[next++];
+        const canvas = await renderForOcr(pdf, i + 1);
+        const { data } = await w.recognize(canvas);
+        pages[i] = {
+          width: canvas.width / OCR_SCALE,
+          lines: (data.lines || []).map(ocrLine).filter(l => l.t),
+        };
+        canvas.width = 0; canvas.height = 0;
+        done++;
+        const left = Math.ceil((Date.now() - t0) / done * (list.length - done) / 60000);
+        bar.style.width = Math.round(done / list.length * 100) + '%';
+        msg.textContent = `Lecture des pages scannées (OCR) : ${done} / ${list.length}` + (done < list.length ? ` · encore environ ${left} min` : '');
+      }
+    };
+    try { await Promise.all(workers.map(run)); } finally { await Promise.all(workers.map(w => w.terminate())); }
+    if (ocrCancel) setMsg(`OCR interrompu après ${done} pages : le texte est partiel.`);
+  } finally {
+    box.hidden = true;
+  }
+}
+
+// Position of a line = its first real word: scan specks in the margin are often glued to the line.
+function ocrLine(l) {
+  const words = (l.words || []).filter(w => /[A-Za-zÀ-ÿ0-9]/.test(w.text));
+  const x = (words.length ? words[0].bbox.x0 : l.bbox.x0) / OCR_SCALE;
+  const t = words.length ? l.text.slice(Math.max(0, l.text.indexOf(words[0].text))) : l.text;
+  return { t: t.replace(/\s+/g, ' ').trim(), x };
+}
+function roman(n) {
+  const r = [[10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']]; let s = '';
+  for (const [v, c] of r) while (n >= v) { s += c; n -= v; }
+  return s;
+}
+function cleanLine(t) {
+  // Underlines come out as "_" and "(" is often read as "{".
+  return t.replace(/_/g, ' ').replace(/\{/g, '(').replace(/\}/g, ')').replace(/\s+[|~‘’]+\s*$/, '')
+    .replace(/^[\s;:‘’'"|•~«»,.]+/, '').replace(/^[-–—]\s+(?=[A-ZÀ-Ý]{2})/, '').replace(/\s+/g, ' ').trim();
+}
+function isNameLine(t) {
+  const m = matchSpeaker(t);
+  return !!(m && !m.rest && !RE_HEAD.test(t) && !EXCLUDED.test(m.key));
+}
+function median(a) { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; }
+
+// Turns positioned lines into the plain-text format of the app: "Page N" markers, stage directions in parentheses.
+function layoutToText(pages) {
+  const edgeKey = (l) => l.replace(/\d+/g, '#').toLowerCase();
+  const freq = {};
+  pages.forEach(pg => new Set([...pg.lines.slice(0, 2), ...pg.lines.slice(-2)].map(l => edgeKey(l.t))).forEach(k => { freq[k] = (freq[k] || 0) + 1; }));
+  const threshold = Math.max(3, pages.length * 0.3);
+  let lastNum = null;
+  const prepared = pages.map((pg, i) => {
+    const ls = pg.lines.map(l => ({ t: cleanLine(l.t), x: l.x })).filter(l => l.t);
+    let label = null;
+    const drop = new Set();
+    [0, 1, ls.length - 2, ls.length - 1].filter(k => k >= 0 && k < ls.length).forEach(k => {
+      const num = ls[k].t.match(/^[-–—\s]*(\d{1,4})[-–—\s.]*$/);
+      // A printed page number follows the previous one; anything else (a room number…) is not one.
+      if (num && label === null && (lastNum === null || (+num[1] > lastNum && +num[1] <= lastNum + 3))) { label = num[1]; drop.add(k); }
+      else if (pages.length > 3 && freq[edgeKey(ls[k].t)] >= threshold) drop.add(k);
+    });
+    // Unnumbered pages: front matter gets i, ii, iii…; a page whose number was not read follows the previous one.
+    if (label === null) label = lastNum !== null ? String(lastNum + 1) : roman(i + 1);
+    if (/^\d+$/.test(label)) lastNum = parseInt(label, 10);
+    return { label, width: pg.width || 600, lines: ls.filter((l, k) => !drop.has(k)) };
+  });
+  // Layout where names and dialogue share an indented column and stage directions sit further left.
+  const nameX = [], afterX = [];
+  prepared.forEach(pg => pg.lines.forEach((l, k) => {
+    if (!isNameLine(l.t)) return;
+    nameX.push(l.x / pg.width);
+    const nx = pg.lines[k + 1];
+    if (nx && !isNameLine(nx.t)) afterX.push(nx.x / pg.width);
+  }));
+  const X = median(nameX), D = median(afterX);
+  const indented = nameX.length >= 5 && X !== null && D !== null && X > 0.12 && Math.abs(D - X) < 0.04;
+  const out = [];
+  prepared.forEach(pg => {
+    out.push('Page ' + pg.label);
+    // A scan can be shifted: the page's own name column wins over the document's.
+    const own = pg.lines.filter(l => isNameLine(l.t)).map(l => l.x / pg.width);
+    const px = own.length >= 2 && Math.abs(median(own) - X) < 0.12 ? median(own) : X;
+    let stage = [];
+    const flush = () => { if (stage.length) { out.push('(' + stage.join(' ').replace(/[()]/g, '') + ')'); stage = []; } };
+    for (const l of pg.lines) {
+      if (indented && l.x / pg.width < px - 0.04 && !RE_HEAD.test(l.t) && !isNameLine(l.t)) { stage.push(l.t); continue; }
+      flush(); out.push(l.t);
+    }
+    flush(); out.push('');
+  });
+  return out.join('\n');
+}
+
+/* ---------------------------------------------------------------- text comparison */
+const UNITS = ['zero', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize'];
+function frNumber(n) {
+  if (n < 17) return UNITS[n];
+  if (n < 20) return 'dix ' + UNITS[n - 10];
+  if (n < 100) {
+    const t = Math.floor(n / 10), u = n % 10;
+    if (t === 7) return 'soixante ' + (u === 1 ? 'et ' : '') + frNumber(10 + u);
+    if (t === 9) return 'quatre vingt ' + frNumber(10 + u);
+    const base = { 2: 'vingt', 3: 'trente', 4: 'quarante', 5: 'cinquante', 6: 'soixante', 8: 'quatre vingt' }[t];
+    if (u === 0) return t === 8 ? 'quatre vingts' : base;
+    return base + ' ' + (u === 1 && t !== 8 ? 'et ' : '') + UNITS[u];
+  }
+  if (n < 1000) { const h = Math.floor(n / 100), r = n % 100; return (h > 1 ? UNITS[h] + ' ' : '') + 'cent' + (r ? ' ' + frNumber(r) : ''); }
+  if (n < 10000) { const k = Math.floor(n / 1000), r = n % 1000; return (k > 1 ? frNumber(k) + ' ' : '') + 'mille' + (r ? ' ' + frNumber(r) : ''); }
+  return String(n);
+}
+function tokens(s) {
+  return s.toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[’'`\-]/g, ' ').replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(Boolean)
+    .flatMap(w => /^\d+$/.test(w) ? frNumber(parseInt(w, 10)).split(' ') : [w]);
+}
+const HOMO = [['a', 'as', 'ah', 'ha'], ['et', 'est', 'ai', 'es', 'ait', 'aie', 'eh', 'e'], ['ces', 'ses', 'sais', 'sait'], ['ce', 'se', 'ceux'], ['on', 'ont'], ['son', 'sont'], ['ou', 'houx', 'hou'],
+  ['peu', 'peut', 'peux'], ['mes', 'mais', 'met', 'mets', 'mai'], ['la', 'las', 'l'], ['vers', 'vert', 'verre', 'ver'], ['sans', 'sang', 'cent', 'sent', 'sens'], ['quand', 'quant', 'camp'],
+  ['si', 'scie', 'six'], ['ni', 'nid', 'nie'], ['leur', 'leurs'], ['tout', 'tous', 'toute', 'toutes'], ['oh', 'o', 'eau', 'au', 'aux', 'haut', 'ho'], ['de', 'deux', 'd'], ['le', 'l'], ['que', 'qu'], ['ne', 'n'],
+  ['je', 'j'], ['me', 'm'], ['te', 't'], ['fois', 'foi', 'foie'], ['vin', 'vingt', 'vain', 'vint'], ['mer', 'mere', 'maire'], ['cour', 'cours', 'court', 'courre'], ['font', 'fond', 'fonds'], ['dans', 'dent', 'd en']];
+const HOMO_MAP = new Map();
+HOMO.forEach((g, i) => g.forEach(w => HOMO_MAP.set(w, i)));
+function phon(w) { return w.replace(/(ent|es|s|x|t|d|e|z|h)$/, '').replace(/^h/, ''); }
+function lev(a, b) {
+  const m = a.length, n = b.length; let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+// 0 = identical, 1 = close enough (homophone / recognition approximation), 4 = different
+function sim(a, b) {
+  if (a === b) return 0;
+  const ga = HOMO_MAP.get(a);
+  if (ga !== undefined && ga === HOMO_MAP.get(b)) return 1;
+  const pa = phon(a), pb = phon(b);
+  if (pa.length > 1 && pa === pb) return 1;
+  const L = Math.min(a.length, b.length);
+  if (L >= 4 && lev(a, b) <= (Math.max(a.length, b.length) >= 8 ? 2 : 1)) return 1;
+  return 4;
+}
+function align(E, S) {
+  const n = E.length, m = S.length, W = m + 1;
+  const D = new Int32Array((n + 1) * W), C = new Int8Array((n + 1) * W);
+  for (let i = 0; i <= n; i++) D[i * W] = i * 4;
+  for (let j = 0; j <= m; j++) D[j] = j * 4;
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) {
+    const c = sim(E[i - 1], S[j - 1]); C[i * W + j] = c;
+    D[i * W + j] = Math.min(D[(i - 1) * W + j - 1] + c, D[(i - 1) * W + j] + 4, D[i * W + j - 1] + 4);
+  }
+  const ops = []; let i = n, j = m;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && D[i * W + j] === D[(i - 1) * W + j - 1] + C[i * W + j]) {
+      const c = C[i * W + j]; ops.push({ t: c === 0 ? 'ok' : c === 1 ? 'near' : 'sub', e: i - 1, s: j - 1 }); i--; j--;
+    } else if (i > 0 && D[i * W + j] === D[(i - 1) * W + j] + 4) { ops.push({ t: 'miss', e: i - 1 }); i--; }
+    else { ops.push({ t: 'extra', s: j - 1 }); j--; }
+  }
+  return ops.reverse();
+}
+// Original words of a reply with the tokens each one produces
+function wordModel(it) {
+  if (it._wm) return it._wm;
+  const raw = it.spoken.split(/\s+/).filter(Boolean);
+  const toks = [], tokWord = [];
+  raw.forEach((w, wi) => tokens(w).forEach(t => { toks.push(t); tokWord.push(wi); }));
+  it._wm = { raw, toks, tokWord };
+  return it._wm;
+}
+function evaluate(it, said) {
+  const wm = wordModel(it), S = tokens(said || '');
+  const ops = align(wm.toks, S);
+  const words = wm.raw.map(w => ({ w, ok: 0, near: 0, bad: 0, subs: [], before: [] }));
+  let pending = [], good = 0, near = 0, miss = 0, sub = 0, extra = 0;
+  for (const op of ops) {
+    if (op.t === 'extra') { pending.push(S[op.s]); extra++; continue; }
+    const wd = words[wm.tokWord[op.e]];
+    if (pending.length) { wd.before.push(...pending); pending = []; }
+    if (op.t === 'ok') { wd.ok++; good++; }
+    else if (op.t === 'near') { wd.near++; near++; }
+    else { wd.bad++; if (op.t === 'sub') { wd.subs.push(S[op.s]); sub++; } else miss++; }
+  }
+  const total = wm.toks.length || 1;
+  return { ops, words, after: pending, good, near, miss, sub, extra, total, score: (good + near) / total };
+}
+function wordState(wd) {
+  if (wd.bad === 0) return wd.near ? 'near' : 'ok';
+  if (wd.ok + wd.near > 0) return 'near';
+  return wd.subs.length ? 'sub' : 'miss';
+}
+function tailReached(ev) {
+  const wm = ev.words; if (!wm.length) return false;
+  const lastTwo = wm.slice(-Math.min(2, wm.length));
+  return ev.score >= 0.6 && lastTwo.every(w => w.bad === 0 && w.ok + w.near > 0);
+}
+
+/* ---------------------------------------------------------------- voices */
+let VOICES = [];
+function loadVoices() {
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices();
+  const score = (v) => (/^fr/i.test(v.lang) ? 0 : 10) + (/natural|online|neural/i.test(v.name) ? 0 : 1);
+  VOICES = vs.slice().sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
+  if (play) renderVoices();
+}
+function frVoices() { const f = VOICES.filter(v => /^fr/i.test(v.lang)); return f.length ? f : VOICES; }
+const PITCHES = [1, 0.85, 1.15, 0.95, 1.08, 0.75, 1.25];
+function voiceKey(name) { return (play ? play.title : '') + '|' + name; }
+function voiceCfg(name) {
+  const stored = P.voices[voiceKey(name)];
+  const others = play.chars.filter(c => c.name !== me).map(c => c.name);
+  const k = Math.max(0, others.indexOf(name));
+  const fv = frVoices();
+  const def = { uri: fv.length ? fv[k % fv.length].voiceURI : '', pitch: PITCHES[Math.floor(k / Math.max(1, fv.length)) % PITCHES.length] };
+  const cfg = Object.assign({}, def, stored || {});
+  cfg.voice = VOICES.find(v => v.voiceURI === cfg.uri) || fv[0] || null;
+  return cfg;
+}
+function narratorCfg() { const fv = frVoices(); return { voice: fv[0] || null, pitch: 1 }; }
+
+function chunkText(t) {
+  const parts = t.split(/(?<=[.!?…;:])\s+/);
+  const out = []; let cur = '';
+  for (const p of parts) {
+    if ((cur + ' ' + p).length > 200 && cur) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p;
+  }
+  if (cur) out.push(cur);
+  return out.filter(s => /\S/.test(s));
+}
+const keepAlive = [];
+function speak(text, cfg, token, rateMul) {
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window) || !text.trim()) { setTimeout(resolve, 400); return; }
+    const chunks = chunkText(text); let i = 0;
+    const next = () => {
+      if (token !== runToken || i >= chunks.length) { resolve(); return; }
+      const str = chunks[i++];
+      const u = new SpeechSynthesisUtterance(str);
+      if (cfg.voice) { u.voice = cfg.voice; u.lang = cfg.voice.lang; } else u.lang = 'fr-FR';
+      u.pitch = cfg.pitch; u.rate = P.settings.rate * (rateMul || 1);
+      let done = false;
+      const fin = () => { if (done) return; done = true; clearTimeout(guard); next(); };
+      const guard = setTimeout(fin, 4000 + str.length * 160 / u.rate);
+      u.onend = fin; u.onerror = fin;
+      keepAlive.push(u); if (keepAlive.length > 30) keepAlive.shift();
+      speechSynthesis.speak(u);
+    };
+    next();
+  });
+}
+
+/* ---------------------------------------------------------------- speech recognition */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micBlocked = false, trackInputSupported = null;
+class Listener {
+  constructor(onText, onFatal) { this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.interim = ''; this.active = false; this.endRes = null; }
+  start() { this.active = true; this.make(); }
+  make() {
+    const r = new SR();
+    r.lang = 'fr-FR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) this.finals += ' ' + t; else interim += t;
+      }
+      this.interim = interim;
+      this.onText(this.text());
+    };
+    r.onerror = (e) => {
+      if (['not-allowed', 'service-not-allowed', 'audio-capture'].includes(e.error)) { this.active = false; this.onFatal(e.error); }
+    };
+    r.onend = () => {
+      if (this.interim) { this.finals += ' ' + this.interim; this.interim = ''; }
+      if (this.active) setTimeout(() => { if (this.active) { try { this.make(); } catch (err) { /* retry on next end */ } } }, 120);
+      else if (this.endRes) this.endRes();
+    };
+    this.rec = r;
+    // Feeding the already-open microphone track avoids a new permission prompt at every start (Chrome 135+).
+    const track = micStream && micStream.getAudioTracks().find(t => t.readyState === 'live');
+    if (track && trackInputSupported !== false) {
+      try { r.start(track); trackInputSupported = true; return; }
+      catch (err) { if (err.name !== 'TypeError') return; trackInputSupported = false; }
+    }
+    try { r.start(); } catch (err) { /* already started */ }
+  }
+  text() { return (this.finals + ' ' + this.interim).replace(/\s+/g, ' ').trim(); }
+  finish() {
+    this.active = false;
+    return new Promise(res => {
+      this.endRes = () => { this.endRes = null; res(this.text()); };
+      try { this.rec.stop(); } catch (err) { this.endRes(); return; }
+      setTimeout(() => { if (this.endRes) this.endRes(); }, 1200);
+    });
+  }
+  abort() { this.active = false; this.endRes = null; try { this.rec.abort(); } catch (err) { /* not running */ } }
+}
+
+/* ---------------------------------------------------------------- app state */
+let play = null, me = null;
+function isMine(it) { return it.type === 'reply' && (it.speaker === me || !!(it.parts && it.parts.includes(me))); }
+function voiceOf(it) { return it.parts ? (it.parts.find(s => s !== me) || it.parts[0]) : it.speaker; }
+let session = null;   // { start, end, index, paused, entries: Map, startedAt }
+let runToken = 0, listener = null, turn = null;
+
+function setMsg(t) { $('#parse-msg').textContent = t; }
+function titleFrom(raw, fallback) {
+  const first = raw.split('\n').map(s => s.trim()).find(s => s && !RE_PAGE.test(s));
+  return fallback || (first ? first.slice(0, 60) : 'Pièce');
+}
+
+function analyze(fromUser) {
+  const raw = $('#raw').value;
+  P.raw = raw; P.title = titleFrom(raw, P.fileTitle);
+  play = buildPlay(P.title, textToPages(raw));
+  const replies = play.items.filter(i => i.type === 'reply').length;
+  $('#parse-stats').innerHTML = `<span><b>${play.pages.length}</b> page${play.pages.length > 1 ? 's' : ''}</span><span><b>${replies}</b> répliques</span><span><b>${play.chars.length}</b> personnages</span>`;
+  $('#src-badge').hidden = raw !== SAMPLE;
+  if (!play.chars.length) { setMsg("Aucun personnage reconnu. Regardez « Formats reconnus » ci-dessous."); }
+  else if (fromUser) setMsg('Texte analysé.');
+  if (!play.chars.some(c => c.name === me)) me = (P.me && play.chars.some(c => c.name === P.me)) ? P.me : (play.chars[0] ? play.chars[0].name : null);
+  if (fromUser) saveStore();
+  renderRoles(); renderPages(); renderVoices();
+}
+
+function renderRoles() {
+  const box = $('#roles');
+  box.innerHTML = play.chars.map((c, i) => `<label class="chip role" for="role-${i}"><input type="radio" name="role" id="role-${i}" value="${esc(c.name)}" ${c.name === me ? 'checked' : ''}>${esc(c.name)} <span class="n">${c.count}</span></label>`).join('');
+  box.querySelectorAll('input').forEach(inp => inp.addEventListener('change', () => { me = inp.value; P.me = me; saveStore(); renderVoices(); updateRangeInfo(); }));
+  $('#btn-start').disabled = !me;
+}
+function renderPages() {
+  const opts = play.pages.map((l, i) => `<option value="${i}">${esc(l)}</option>`).join('');
+  $('#start-page').innerHTML = opts;
+  $('#end-page').innerHTML = opts + `<option value="end">fin de la pièce</option>`;
+  const sp = P.startPage && play.pages.indexOf(P.startPage);
+  $('#start-page').value = sp > 0 ? String(sp) : '0';
+  $('#end-page').value = 'end';
+  updateRangeInfo();
+}
+function getRange() {
+  const sp = parseInt($('#start-page').value, 10) || 0;
+  const evv = $('#end-page').value;
+  const ep = evv === 'end' ? Infinity : parseInt(evv, 10);
+  let start = play.items.findIndex(it => it.pi >= sp); if (start < 0) start = play.items.length;
+  let end = play.items.length;
+  if (ep !== Infinity) { const k = play.items.findIndex(it => it.pi > ep); if (k >= 0) end = k; }
+  return { start, end: Math.max(start, end) };
+}
+function updateRangeInfo() {
+  if (!play) return;
+  const { start, end } = getRange();
+  const mine = play.items.slice(start, end).filter(it => isMine(it)).length;
+  $('#range-info').textContent = me ? `${mine} réplique${mine > 1 ? 's' : ''} de ${me} dans ce passage` : '';
+}
+function renderVoices() {
+  if (!play) return;
+  const others = play.chars.filter(c => c.name !== me);
+  const opts = VOICES.map(v => `<option value="${esc(v.voiceURI)}">${esc(v.name)} (${esc(v.lang)})</option>`).join('');
+  const rows = others.map((c, i) => {
+    const cfg = voiceCfg(c.name);
+    return `<tr data-name="${esc(c.name)}"><td class="who">${esc(c.name)}</td>
+      <td><select id="voice-${i}" aria-label="Voix de ${esc(c.name)}">${opts}</select></td>
+      <td><input type="range" id="pitch-${i}" min="0.5" max="1.6" step="0.05" value="${cfg.pitch}" aria-label="Hauteur de ${esc(c.name)}"></td>
+      <td><button class="ghost" data-test="${i}">Écouter</button></td></tr>`;
+  }).join('');
+  $('#voices').innerHTML = others.length ? `<thead><tr><th>Personnage</th><th>Voix</th><th>Hauteur</th><th></th></tr></thead><tbody>${rows}</tbody>` : '<tbody><tr><td class="muted">Aucun autre personnage.</td></tr></tbody>';
+  others.forEach((c, i) => {
+    const sel = $('#voice-' + i), pit = $('#pitch-' + i);
+    const cfg = voiceCfg(c.name); if (cfg.voice) sel.value = cfg.voice.voiceURI;
+    const store = () => { P.voices[voiceKey(c.name)] = { uri: sel.value, pitch: parseFloat(pit.value) }; saveStore(); };
+    sel.addEventListener('change', store); pit.addEventListener('change', store);
+  });
+  $('#voices').querySelectorAll('[data-test]').forEach(b => b.addEventListener('click', () => {
+    const c = others[+b.dataset.test];
+    const sample = play.items.find(it => it.type === 'reply' && it.speaker === c.name);
+    speechSynthesis.cancel(); runToken++;
+    speak(sample ? sample.spoken.slice(0, 160) : c.name, voiceCfg(c.name), runToken);
+  }));
+  if (!VOICES.length) $('#voices').innerHTML = '<tbody><tr><td class="muted">Les voix du navigateur se chargent…</td></tr></tbody>';
+}
+
+function bindSettings() {
+  const s = P.settings;
+  const rate = $('#rate'), sil = $('#silence');
+  rate.value = s.rate; sil.value = s.silence;
+  const show = () => { $('#rate-v').textContent = '×' + (+rate.value).toFixed(2); $('#silence-v').textContent = (+sil.value).toFixed(1) + ' s'; };
+  show();
+  rate.addEventListener('input', () => { s.rate = +rate.value; show(); saveStore(); });
+  sil.addEventListener('input', () => { s.silence = +sil.value; show(); saveStore(); });
+  [['opt-autoend', 'autoEnd'], ['opt-showmine', 'showMine'], ['opt-autohint', 'autoHint'], ['opt-stage', 'readStage'], ['opt-announce', 'announce']].forEach(([id, k]) => {
+    const el = $('#' + id); el.checked = !!s[k];
+    el.addEventListener('change', () => { s[k] = el.checked; saveStore(); });
+  });
+}
+
+/* ---------------------------------------------------------------- rehearsal */
+function show(view) { ['setup', 'run', 'report'].forEach(v => { $('#view-' + v).hidden = v !== view; }); window.scrollTo(0, 0); }
+
+// The microphone is opened once per session and kept open, so the browser asks at most once
+// instead of at every reply (each speech recognition start would otherwise ask again).
+let micStream = null;
+async function openMic() {
+  if (micStream || !SR || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); micBlocked = false; }
+  catch (err) { micBlocked = true; }
+}
+function closeMic() {
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+async function startSession(fromIdx) {
+  if (!play || !me) return;
+  await openMic();
+  const { start, end } = getRange();
+  P.startPage = play.pages[parseInt($('#start-page').value, 10) || 0]; saveStore();
+  session = { start, end, index: fromIdx !== undefined ? fromIdx : start, paused: false, entries: new Map(), startedAt: Date.now(), maxIdx: start };
+  renderScript();
+  show('run');
+  runFrom(session.index);
+}
+
+function renderScript() {
+  const box = $('#script'); let html = '', lastPi = -1;
+  for (let i = session.start; i < session.end; i++) {
+    const it = play.items[i];
+    if (it.pi !== lastPi) { html += `<div class="pg">Page ${esc(play.pages[it.pi])}</div>`; lastPi = it.pi; }
+    if (it.type === 'reply') html += `<div class="sl reply${isMine(it) ? ' mine' : ''}" data-idx="${i}"><span class="sc" id="sc-${i}"></span><span class="who">${esc(it.speaker)}</span>${fmt(it.text)}</div>`;
+    else html += `<div class="sl ${it.type}" data-idx="${i}">${esc(it.text)}</div>`;
+  }
+  box.innerHTML = html || '<div class="sl note">Rien à jouer dans ce passage.</div>';
+  box.querySelectorAll('.sl[data-idx]').forEach(el => el.addEventListener('click', () => jumpTo(+el.dataset.idx)));
+}
+function fmt(t) { return esc(t).replace(/\(([^)]*)\)/g, '<em class="stg">($1)</em>'); }
+
+function stopAll() {
+  runToken++;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (listener) { listener.abort(); listener = null; }
+  if (turn) { turn.cancel(); turn = null; }
+}
+
+async function runFrom(idx) {
+  stopAll();
+  const token = runToken;
+  session.index = idx; session.paused = false; $('#btn-pause').textContent = 'Pause';
+  while (session.index < session.end) {
+    const it = play.items[session.index];
+    session.maxIdx = Math.max(session.maxIdx, session.index);
+    renderCurrent();
+    if (isMine(it) && !wordModel(it).toks.length) {
+      await pause(900);
+    } else if (isMine(it)) {
+      const r = await myTurn(it, token);
+      if (token !== runToken) return;
+      if (r) record(it, r);
+    } else if (it.type === 'reply') {
+      setStatus('talk', `${it.speaker} parle…`);
+      if (P.settings.announce) await speak(it.speaker.toLowerCase(), narratorCfg(), token, 1.1);
+      if (token !== runToken) return;
+      await speak(it.spoken, voiceCfg(voiceOf(it)), token);
+      await pause(250);
+    } else if (it.type === 'stage' && P.settings.readStage) {
+      setStatus('talk', 'Didascalie');
+      await speak(it.text.replace(/[()[\]]/g, ''), narratorCfg(), token, 1.1);
+    } else {
+      await pause(it.type === 'heading' ? 500 : 150);
+    }
+    if (token !== runToken) return;
+    session.index++;
+  }
+  finishSession(true);
+}
+const pause = (ms) => new Promise(r => setTimeout(r, ms));
+
+function setStatus(kind, text) { $('#dot').className = 'dot' + (kind ? ' ' + kind : ''); $('#status').textContent = text; }
+
+function renderCurrent() {
+  const it = play.items[session.index];
+  $('#where').textContent = `Page ${play.pages[it.pi]} · ${session.index - session.start + 1} / ${session.end - session.start}`;
+  // cue: the previous reply
+  let prev = null;
+  for (let k = session.index - 1; k >= session.start; k--) { if (play.items[k].type === 'reply') { prev = play.items[k]; break; } }
+  $('#cue').innerHTML = prev ? `<b>${esc(prev.speaker)}</b> — ${esc(prev.spoken.length > 160 ? '…' + prev.spoken.slice(-160) : prev.spoken)}` : '';
+  const mine = isMine(it);
+  $('#card').classList.toggle('mine', mine);
+  $('#mine-tools').hidden = !mine;
+  const sp = $('#cur-speaker'), tx = $('#cur-text'), as = $('#cur-aside');
+  tx.className = 'line-text';
+  as.hidden = !(it.type === 'reply' && it.aside);
+  as.textContent = it.aside ? '(' + it.aside + ')' : '';
+  if (it.type === 'reply') {
+    sp.innerHTML = esc(it.speaker) + (mine ? '<span class="you">vous</span>' : '');
+    if (!mine) tx.innerHTML = fmt(it.text);
+  } else {
+    sp.textContent = it.type === 'heading' ? '' : (it.type === 'stage' ? 'Didascalie' : '');
+    tx.classList.add(it.type === 'heading' ? 'headline' : 'stagedir');
+    tx.textContent = it.text;
+    setStatus('', '');
+  }
+  document.querySelectorAll('.sl.is-current').forEach(e => e.classList.remove('is-current'));
+  const el = document.querySelector(`.sl[data-idx="${session.index}"]`);
+  if (el) { el.classList.add('is-current'); const box = $('#script'); box.scrollTo({ top: el.offsetTop - box.clientHeight / 3, behavior: 'smooth' }); }
+}
+
+function renderMine() {
+  if (!turn) return;
+  const { it, ev, reveal, showAll } = turn;
+  const wm = wordModel(it);
+  let furthest = -1;
+  if (ev) ev.words.forEach((w, i) => { if (w.ok + w.near > 0) furthest = i; });
+  turn.furthest = furthest;
+  $('#cur-text').innerHTML = wm.raw.map((w, i) => {
+    const wd = ev ? ev.words[i] : null;
+    const said = wd && wd.ok + wd.near > 0 && i <= furthest;
+    const visible = showAll || said || i < reveal;
+    let cls = 'w';
+    if (!visible) cls += ' masked';
+    else if (said) cls += wd.bad || wd.near ? ' near' : ' hit';
+    return `<span class="${cls}">${esc(w)}</span>`;
+  }).join(' ');
+  $('#turn-progress').style.width = ev ? Math.round(Math.min(1, ev.score) * 100) + '%' : '0%';
+}
+
+function myTurn(it, token) {
+  return new Promise(resolve => {
+    const t0 = Date.now();
+    let last = 0, spoken = false, done = false, said = '', iv = null;
+    turn = { it, ev: null, reveal: 0, showAll: P.settings.showMine, hints: 0, revealedAll: P.settings.showMine, autoHinted: false, furthest: -1 };
+    $('#heard').textContent = '';
+    renderMine();
+    const end = async (reason) => {
+      if (done) return; done = true; clearInterval(iv);
+      let text = said;
+      if (listener) { const l = listener; listener = null; text = await l.finish(); }
+      if (token !== runToken) { resolve(null); return; }
+      const t = turn; turn = null;
+      resolve({ said: text, reason, hints: t ? t.hints : 0, revealedAll: t ? t.revealedAll : false, ms: Date.now() - t0 });
+    };
+    turn.finish = () => end('manual');
+    turn.cancel = () => { if (!done) { done = true; clearInterval(iv); resolve(null); } };
+    turn.hint = () => {
+      turn.hints++;
+      turn.reveal = Math.max(turn.reveal, (turn.furthest + 1)) + 4;
+      renderMine();
+    };
+    turn.showEverything = () => { turn.showAll = true; turn.revealedAll = true; renderMine(); };
+
+    if (!SR || micBlocked) {
+      setStatus('', SR ? 'Micro refusé : dites votre texte puis appuyez sur Espace (non évalué).' : 'Pas de reconnaissance vocale dans ce navigateur : dites votre texte puis Espace (non évalué).');
+      turn.unscored = true;
+      turn.finish = () => { if (!done) { done = true; turn = null; resolve(null); } };
+      return;
+    }
+    setStatus('live', 'À vous. Je vous écoute…');
+    listener = new Listener((text) => {
+      if (token !== runToken || done) return;
+      said = text; last = Date.now(); spoken = spoken || text.length > 0;
+      $('#heard').textContent = text;
+      turn.ev = evaluate(it, text);
+      turn.tail = tailReached(turn.ev);
+      renderMine();
+    }, (err) => {
+      micBlocked = true;
+      setStatus('', `Micro indisponible (${err}). Autorisez le micro dans le navigateur, puis appuyez sur Espace.`);
+    });
+    listener.start();
+    iv = setInterval(() => {
+      if (token !== runToken) { end('aborted'); return; }
+      const now = Date.now();
+      if (spoken && P.settings.autoEnd) {
+        const quiet = now - last;
+        if (turn && turn.tail && quiet > 800) end('tail');
+        else if (quiet > P.settings.silence * 1000) end('silence');
+      } else if (!spoken && turn && P.settings.autoHint && !turn.autoHinted && now - t0 > 7000) {
+        turn.autoHinted = true; turn.hint(); setStatus('live', 'Je vous souffle le début…');
+      }
+    }, 200);
+  });
+}
+
+function record(it, r) {
+  const ev = evaluate(it, r.said);
+  const skipped = !r.said.trim();
+  const entry = session.entries.get(it.idx) || { it, attempts: [] };
+  entry.attempts.push({ said: r.said, ev, hints: r.hints, revealedAll: r.revealedAll, skipped, ms: r.ms });
+  session.entries.set(it.idx, entry);
+  const sc = document.getElementById('sc-' + it.idx);
+  if (sc) sc.innerHTML = scoreChip(skipped ? 0 : ev.score);
+  setStatus('', skipped ? 'Réplique passée.' : `Réplique notée : ${Math.round(ev.score * 100)} %`);
+}
+function scoreClass(s) { return s >= 0.9 ? 's-good' : s >= 0.7 ? 's-mid' : 's-low'; }
+function scoreChip(s) { return `<span class="score ${scoreClass(s)}">${Math.round(s * 100)} %</span>`; }
+
+function next() {
+  if (!session) return;
+  if (turn) { turn.finish(); return; }
+  if (session.paused) { runFrom(Math.min(session.index + 1, session.end - 1)); return; }
+  if (session.index + 1 >= session.end) { finishSession(true); return; }
+  runFrom(session.index + 1);
+}
+function prev() {
+  if (!session) return;
+  let k = session.index - 1;
+  while (k > session.start && play.items[k].type !== 'reply') k--;
+  jumpTo(Math.max(session.start, k));
+}
+function jumpTo(idx) { if (!session) return; if (session.paused) { stopAll(); session.index = idx; renderCurrent(); setStatus('', 'En pause. Appuyez sur Reprendre.'); } else runFrom(idx); }
+function togglePause() {
+  if (!session) return;
+  if (session.paused) { runFrom(session.index); return; }
+  stopAll(); session.paused = true; $('#btn-pause').textContent = 'Reprendre';
+  setStatus('', 'En pause.');
+}
+
+/* ---------------------------------------------------------------- report */
+function finishSession(reachedEnd) {
+  if (!session) return;
+  stopAll();
+  closeMic();
+  const s = session; session = null;
+  const rep = buildReport(s, reachedEnd);
+  if (rep.count) { P.history.unshift(rep.hist); P.history = P.history.slice(0, 30); saveStore(); }
+  renderReport(rep);
+  lastReport = rep;
+  show('report');
+}
+let lastReport = null;
+
+function buildReport(s, reachedEnd) {
+  const entries = [...s.entries.values()].sort((a, b) => a.it.idx - b.it.idx).map(e => ({ ...e, last: e.attempts[e.attempts.length - 1] }));
+  let good = 0, total = 0, hints = 0;
+  entries.forEach(e => { const ev = e.last.ev; good += e.last.skipped ? 0 : ev.good + ev.near; total += ev.total; hints += e.attempts.reduce((n, a) => n + a.hints + (a.revealedAll ? 1 : 0), 0); });
+  const score = total ? good / total : 0;
+  const weak = entries.filter(e => e.last.skipped || e.last.ev.score < 0.8);
+  const perfect = entries.filter(e => !e.last.skipped && e.last.ev.score >= 0.95 && e.last.ev.miss === 0);
+  const mineInRange = play.items.slice(s.start, s.maxIdx + 1).filter(it => isMine(it)).length;
+  const fromLabel = play.pages[play.items[s.start] ? play.items[s.start].pi : 0];
+  const toLabel = play.pages[play.items[Math.min(s.maxIdx, play.items.length - 1)] ? play.items[Math.min(s.maxIdx, play.items.length - 1)].pi : 0];
+  const dur = Math.round((Date.now() - s.startedAt) / 1000);
+  const hist = { date: new Date().toISOString(), title: play.title, me, from: fromLabel, to: toLabel, count: entries.length, score, weak: weak.length, dur };
+  return { entries, weak, perfect, score, hints, count: entries.length, mineInRange, fromLabel, toLabel, dur, reachedEnd, hist, start: s.start, firstIdx: s.start };
+}
+function fmtDur(sec) { const m = Math.floor(sec / 60), s = sec % 60; return m ? `${m} min ${String(s).padStart(2, '0')}` : `${s} s`; }
+
+function diffHtml(ev) {
+  const parts = ev.words.map(wd => {
+    let h = wd.before.length ? `<span class="d-extra">+${esc(wd.before.join(' '))}</span> ` : '';
+    const st = wordState(wd);
+    if (st === 'ok') h += esc(wd.w);
+    else if (st === 'near') h += `<span class="d-near">${esc(wd.w)}</span>`;
+    else if (st === 'sub') h += `<span class="d-sub">${esc(wd.w)}</span><span class="d-said">(${esc(wd.subs.join(' '))})</span>`;
+    else h += `<span class="d-miss">${esc(wd.w)}</span>`;
+    return h;
+  });
+  if (ev.after.length) parts.push(`<span class="d-extra">+${esc(ev.after.join(' '))}</span>`);
+  return parts.join(' ');
+}
+function entryHtml(e) {
+  const a = e.last, it = e.it;
+  const s = a.skipped ? 0 : a.ev.score;
+  const help = e.attempts.reduce((n, x) => n + x.hints, 0);
+  const meta = [`Page ${esc(play.pages[it.pi])}`, scoreChip(s)];
+  if (a.skipped) meta.push('passée sans rien dire');
+  if (e.attempts.length > 1) meta.push(`${e.attempts.length} essais`);
+  if (help) meta.push(`soufflée ${help} fois`);
+  if (a.revealedAll) meta.push('texte affiché');
+  if (!a.skipped) {
+    const d = [];
+    if (a.ev.miss) d.push(`${a.ev.miss} mot${a.ev.miss > 1 ? 's' : ''} oublié${a.ev.miss > 1 ? 's' : ''}`);
+    if (a.ev.sub) d.push(`${a.ev.sub} remplacé${a.ev.sub > 1 ? 's' : ''}`);
+    if (a.ev.extra) d.push(`${a.ev.extra} en trop`);
+    if (d.length) meta.push(d.join(', '));
+  }
+  let prevCue = '';
+  for (let k = it.idx - 1; k >= 0; k--) { if (play.items[k].type === 'reply') { prevCue = play.items[k]; break; } }
+  return `<article class="entry">
+    <div class="entry-head">${meta.join(' · ')}</div>
+    ${prevCue ? `<div class="heard-line">Après ${esc(prevCue.speaker)} : « ${esc(prevCue.spoken.length > 90 ? '…' + prevCue.spoken.slice(-90) : prevCue.spoken)} »</div>` : ''}
+    <div class="diff">${diffHtml(a.ev)}</div>
+    <div class="heard-line">Entendu : « ${esc(a.said || '—')} »</div>
+  </article>`;
+}
+function renderReport(rep) {
+  $('#rep-eyebrow').textContent = `${play.title} · rôle de ${me}`;
+  $('#rep-lede').textContent = rep.count
+    ? `De la page ${rep.fromLabel} à la page ${rep.toLabel}${rep.reachedEnd ? ', passage terminé' : ''}. ${rep.count} réplique${rep.count > 1 ? 's' : ''} dite${rep.count > 1 ? 's' : ''} en ${fmtDur(rep.dur)}.`
+    : `Aucune réplique de ${me} n'a été dite pendant cette séance.`;
+  $('#rep-kpis').innerHTML = [
+    [Math.round(rep.score * 100) + ' %', 'des mots justes'],
+    [`${rep.perfect.length} / ${rep.count}`, 'répliques parfaites'],
+    [String(rep.weak.length), 'à retravailler (< 80 %)'],
+    [String(rep.hints), 'fois soufflé'],
+  ].map(([v, l]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  $('#rep-weak-box').hidden = !rep.weak.length;
+  $('#rep-weak').innerHTML = rep.weak.slice().sort((a, b) => (a.last.skipped ? 0 : a.last.ev.score) - (b.last.skipped ? 0 : b.last.ev.score)).map(entryHtml).join('');
+  $('#rep-all').innerHTML = rep.entries.length ? rep.entries.map(entryHtml).join('') : '<p class="muted">Rien à afficher.</p>';
+  $('#btn-retry-weak').hidden = !rep.weak.length;
+  $('#copy-msg').textContent = '';
+  renderHistory();
+}
+function reportText(rep) {
+  const L = [`Le Souffleur — ${play.title} — rôle de ${me}`, `${new Date().toLocaleString('fr-FR')} · pages ${rep.fromLabel} à ${rep.toLabel} · ${fmtDur(rep.dur)}`,
+    `Justesse : ${Math.round(rep.score * 100)} % · parfaites : ${rep.perfect.length}/${rep.count} · à retravailler : ${rep.weak.length} · soufflé : ${rep.hints} fois`, ''];
+  rep.entries.forEach(e => {
+    const a = e.last;
+    L.push(`[p. ${play.pages[e.it.pi]}] ${a.skipped ? 'PASSÉE' : Math.round(a.ev.score * 100) + ' %'}`);
+    L.push('  Texte   : ' + e.it.spoken);
+    L.push('  Entendu : ' + (a.said || '—'));
+    const missed = a.ev.words.filter(w => wordState(w) === 'miss').map(w => w.w);
+    if (missed.length) L.push('  Oublié  : ' + missed.join(', '));
+    const subs = a.ev.words.filter(w => wordState(w) === 'sub').map(w => `${w.w} → ${w.subs.join(' ')}`);
+    if (subs.length) L.push('  Remplacé: ' + subs.join(' ; '));
+    L.push('');
+  });
+  return L.join('\n');
+}
+function renderHistory() {
+  const h = P.history;
+  $('#hist-step').hidden = !h.length;
+  $('#hist').innerHTML = `<thead><tr><th>Date</th><th>Pièce</th><th>Rôle</th><th>Pages</th><th>Répliques</th><th>Justesse</th><th>À retravailler</th></tr></thead><tbody>` +
+    h.slice(0, 10).map(x => `<tr><td>${new Date(x.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</td><td>${esc(x.title)}</td><td>${esc(x.me)}</td><td class="num">${esc(x.from)}–${esc(x.to)}</td><td class="num">${x.count}</td><td class="num">${scoreChip(x.score)}</td><td class="num">${x.weak}</td></tr>`).join('') + '</tbody>';
+}
+
+/* ---------------------------------------------------------------- wiring */
+$('#btn-parse').addEventListener('click', () => analyze(true));
+$('#btn-ocr-cancel').addEventListener('click', () => { ocrCancel = true; $('#ocr-msg').textContent = 'Interruption après la page en cours…'; });
+$('#btn-save-txt').addEventListener('click', () => {
+  const blob = new Blob([$('#raw').value], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (P.fileTitle || P.title || 'piece') + '.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+$('#raw').addEventListener('input', () => setMsg('Texte modifié : cliquez sur « Analyser le texte ».'));
+$('#file-input').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const input = $('#file-input'), parseBtn = $('#btn-parse');
+  try {
+    setMsg('Lecture…');
+    input.disabled = true; parseBtn.disabled = true;
+    const text = /\.pdf$/i.test(f.name) || f.type === 'application/pdf' ? await pdfToText(f) : await f.text();
+    $('#raw').value = text;
+    P.fileTitle = f.name.replace(/\.[^.]+$/, '');
+    analyze(true);
+    if (!ocrCancel) setMsg(`« ${f.name} » chargé. Vérifiez le texte si besoin, puis relancez l'analyse.`);
+  } catch (err) { setMsg('Lecture impossible : ' + err.message); }
+  input.disabled = false; parseBtn.disabled = false;
+  e.target.value = '';
+});
+$('#start-page').addEventListener('change', () => { const ep = $('#end-page'); if (ep.value !== 'end' && +ep.value < +$('#start-page').value) ep.value = 'end'; updateRangeInfo(); });
+$('#end-page').addEventListener('change', updateRangeInfo);
+$('#btn-start').addEventListener('click', () => startSession());
+$('#btn-next').addEventListener('click', next);
+$('#btn-done').addEventListener('click', next);
+$('#btn-prev').addEventListener('click', prev);
+$('#btn-pause').addEventListener('click', togglePause);
+$('#btn-stop').addEventListener('click', () => finishSession(false));
+$('#btn-hint').addEventListener('click', () => { if (turn && turn.hint) turn.hint(); });
+$('#btn-reveal').addEventListener('click', () => { if (turn && turn.showEverything) turn.showEverything(); });
+$('#btn-back').addEventListener('click', () => show('setup'));
+$('#btn-again').addEventListener('click', () => startSession());
+$('#btn-retry-weak').addEventListener('click', () => {
+  if (!lastReport || !lastReport.weak.length) return;
+  const target = lastReport.weak[0].it.idx;
+  let k = target - 1; while (k > 0 && play.items[k].type !== 'reply') k--;
+  startSession(Math.max(getRange().start, Math.min(k, target)));
+});
+$('#btn-copy').addEventListener('click', () => {
+  if (!lastReport) return;
+  const txt = reportText(lastReport);
+  navigator.clipboard.writeText(txt).then(() => { $('#copy-msg').textContent = 'Bilan copié.'; }, () => { $('#copy-msg').textContent = 'Copie refusée par le navigateur.'; });
+});
+document.addEventListener('keydown', (e) => {
+  if ($('#view-run').hidden) return;
+  if (e.target.closest && e.target.closest('textarea, input, select')) return;
+  if (e.code === 'Space') { e.preventDefault(); if (e.target.blur && e.target.tagName === 'BUTTON') e.target.blur(); next(); }
+  else if (e.key === 'Escape') finishSession(false);
+  else if (e.key === 's' || e.key === 'S') { if (turn && turn.hint) turn.hint(); }
+  else if (e.key === 'p' || e.key === 'P') togglePause();
+  else if (e.key === 'ArrowLeft') prev();
+});
+window.addEventListener('beforeunload', () => {
+  if (session && session.entries.size) { const rep = buildReport(session, false); P.history.unshift(rep.hist); P.history = P.history.slice(0, 30); saveStore(); }
+});
+
+/* ---------------------------------------------------------------- boot */
+(function boot() {
+  const warn = [];
+  if (!SR) warn.push("Ce navigateur ne sait pas reconnaître la voix : utilisez Microsoft Edge ou Google Chrome pour que votre texte soit évalué.");
+  if (!('speechSynthesis' in window)) warn.push("Ce navigateur ne sait pas lire à voix haute.");
+  if (location.protocol === 'file:' && SR) warn.push("Page ouverte comme fichier : le navigateur peut redemander l'accès au micro à chaque réplique. Lancez plutôt « lancer.cmd » (adresse http://localhost:8642).");
+  if (warn.length) { $('#env-warn').hidden = false; $('#env-warn').innerHTML = warn.map(esc).join('<br>'); }
+  bindSettings();
+  $('#raw').value = P.raw || SAMPLE;
+  loadVoices();
+  if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', loadVoices);
+  analyze(false);
+  renderHistory();
+})();
+</script>
+</body>
+</html>
