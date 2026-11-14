@@ -1229,12 +1229,18 @@ async function prepareLocalSR() {
   } catch (err) { /* online recognition */ }
 }
 class Listener {
-  constructor(onText, onFatal) { this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.interim = ''; this.active = false; this.endRes = null; }
+  constructor(onText, onFatal) { this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.interim = ''; this.active = false; this.endRes = null; this.log = []; }
   start() { this.active = true; this.make(); }
   make() {
     const r = new SR();
     r.lang = 'fr-FR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
     if (useLocalSR) { try { r.processLocally = true; } catch (err) { /* unsupported */ } }
+    // Short trace of the recognizer's events, shown by the microphone test to diagnose a device.
+    const t0 = Date.now(), note = (s) => { if (this.log.length < 40) this.log.push(s + '@' + ((Date.now() - t0) / 1000).toFixed(1)); };
+    note(useLocalSR ? 'make(local)' : 'make');
+    ['start', 'audiostart', 'soundstart', 'speechstart', 'speechend', 'audioend', 'end', 'nomatch'].forEach(n => r.addEventListener(n, () => note(n)));
+    r.addEventListener('error', (e) => note('error:' + e.error));
+    r.addEventListener('result', () => { if (!this.gotResult) note('result'); });
     r.onresult = (e) => {
       this.gotResult = true;
       let interim = '';
@@ -1262,7 +1268,7 @@ class Listener {
       try { r.start(track); trackInputSupported = true; this.trackMode = true; return; }
       catch (err) { if (err.name !== 'TypeError') return; trackInputSupported = false; }
     }
-    try { r.start(); } catch (err) { /* already started */ }
+    try { r.start(); } catch (err) { note('start-exception:' + err.name); }
   }
   // Some microphones (headsets in particular) give the recognizer no usable sound through the track:
   // the level meter hears the voice but nothing is transcribed. Switch to the browser's own capture.
@@ -1955,6 +1961,10 @@ async function toggleMicTest() {
       res.innerHTML = `<div>${words}</div><div class="muted">${Math.round(ev.score * 100)} % des mots reconnus · ${esc(how)}</div>`;
     }
     info.textContent = verdict;
+    const tech = [navigator.userAgent.replace('Mozilla/5.0 ', ''), 'standalone=' + (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true),
+      'SR=' + (window.SpeechRecognition ? 'std' : window.webkitSpeechRecognition ? 'webkit' : 'non'), 'local=' + useLocalSR, 'mobile=' + MOBILE,
+      'events: ' + (l ? l.log.join(' ') : '-')].join(' · ');
+    res.insertAdjacentHTML('beforeend', `<details class="muted small"><summary>Détails techniques (à recopier en cas de problème)</summary><code style="word-break:break-all">${esc(tech)}</code></details>`);
   })());
   micTest = { stop };
 }
