@@ -118,6 +118,10 @@ details pre { white-space: pre-wrap; background: var(--sunk); padding: 12px; bor
 .w.masked { color: transparent; background: var(--mask); user-select: none; }
 .w.hit { color: var(--good); }
 .w.near { color: var(--warn); }
+.w.miss { color: var(--bad); text-decoration: line-through; }
+.mictest { display: grid; gap: 8px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.mictest input[type=text] { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.mictest audio { width: 100%; max-width: 420px; height: 36px; }
 .status { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: .95rem; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot.live { background: var(--bad); animation: pulse 1.2s infinite; }
@@ -235,6 +239,14 @@ au début de chaque page.</pre>
           <label class="field" for="rate">Débit des voix : <span id="rate-v"></span><input type="range" id="rate" min="0.7" max="1.4" step="0.05"></label>
           <label class="field" for="silence">Fin de ma réplique après un silence de : <span id="silence-v"></span><input type="range" id="silence" min="1" max="6" step="0.5"></label>
           <label class="field" for="mic">Micro : <select id="mic"><option value="">Micro par défaut du système</option></select></label>
+          <div class="mictest">
+            <label class="field" for="mt-text">Tester le micro avec la phrase : <input type="text" id="mt-text"></label>
+            <div class="row" style="gap:8px"><button id="mt-btn">Tester le micro</button><span class="muted small" id="mt-info" aria-live="polite"></span></div>
+            <div class="progress" title="Niveau du micro" aria-hidden="true"><div id="mt-level"></div></div>
+            <div class="heard" id="mt-heard" aria-live="polite"></div>
+            <div class="small" id="mt-result"></div>
+            <audio id="mt-audio" controls hidden></audio>
+          </div>
         </div>
         <div class="steps" style="gap:8px">
           <label class="check" for="opt-autoend"><input type="checkbox" id="opt-autoend"> Passer à la suite automatiquement après ma réplique</label>
@@ -1379,9 +1391,12 @@ function show(view) { ['setup', 'run', 'report'].forEach(v => { $('#view-' + v).
 // The microphone is opened once per session and kept open, so the browser asks at most once
 // instead of at every reply (each speech recognition start would otherwise ask again).
 let micStream = null, micCtx = null, micAnalyser = null, micBuf = null;
-async function openMic() {
-  if (P.settings.noMic) return;
-  if (micStream || !SR || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+// On phones only one capture of the microphone at a time: if the page keeps it open (level meter,
+// recording), speech recognition hears nothing. There, the stream is only opened to get the permission.
+const MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+async function openMic(force, keep = !MOBILE) {
+  if (P.settings.noMic && !force) return;
+  if (micStream || (!SR && !force) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
   const base = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
   const id = P.settings.micId;
   try {
@@ -1389,6 +1404,7 @@ async function openMic() {
     catch (err) { if (!id || err.name === 'NotAllowedError') throw err; micStream = await navigator.mediaDevices.getUserMedia({ audio: base }); }
     micBlocked = false;
   } catch (err) { micBlocked = true; return; }
+  if (!keep) { micStream.getTracks().forEach(t => t.stop()); micStream = null; return; }
   try {
     micCtx = new (window.AudioContext || window.webkitAudioContext)();
     micAnalyser = micCtx.createAnalyser(); micAnalyser.fftSize = 1024;
@@ -1455,6 +1471,7 @@ function cueTail(t) {
 // fromIdx / toIdx (exclusive) narrow the session inside the chosen pages.
 async function startSession(fromIdx, toIdx) {
   if (!play || !me) return;
+  if (micTest) await micTest.stop();
   releaseAudio();
   audio();
   await Promise.all([openMic(), prepareLocalSR()]);
@@ -1872,6 +1889,77 @@ window.addEventListener('beforeunload', () => {
   analyze(false);
   renderHistory();
 })();
+
+/* ---------------------------------------------------------------- microphone test */
+const DEFAULT_TEST = 'Bonjour, je répète mon texte avec le souffleur, est-ce que vous m’entendez bien ?';
+let micTest = null;
+async function toggleMicTest() {
+  if (micTest) { micTest.stop(); return; }
+  if (session) return;
+  const btn = $('#mt-btn'), info = $('#mt-info'), heard = $('#mt-heard'), res = $('#mt-result'), au = $('#mt-audio');
+  const text = $('#mt-text').value.trim() || DEFAULT_TEST;
+  P.settings.testText = text; saveStore();
+  heard.textContent = ''; res.innerHTML = '';
+  au.hidden = true; if (au.src) { URL.revokeObjectURL(au.src); au.removeAttribute('src'); }
+  btn.disabled = true; info.textContent = 'Ouverture du micro…';
+  const keep = !MOBILE || !SR;
+  await Promise.all([openMic(true, keep), prepareLocalSR()]);
+  btn.disabled = false;
+  if (micBlocked || (keep && !micStream)) { info.textContent = 'Micro inaccessible : autorisez-le dans le navigateur.'; return; }
+  const measured = !!micAnalyser;
+  const it = { spoken: text };
+  const chunks = []; let mr = null;
+  if (micStream && window.MediaRecorder) {
+    try { mr = new MediaRecorder(micStream); mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); }; mr.start(); } catch (err) { mr = null; }
+  }
+  let said = '', last = Date.now(), spoken = false, loudMs = 0, maxLvl = 0, srError = '';
+  const t0 = Date.now();
+  const l = SR ? new Listener((t) => { said = t; last = Date.now(); spoken = spoken || t.length > 0; heard.textContent = t; }, (err) => { srError = err; }) : null;
+  if (l) l.start();
+  btn.textContent = 'Arrêter'; btn.classList.add('primary');
+  info.textContent = SR ? 'Dites la phrase…' : 'Pas de reconnaissance vocale ici : dites la phrase, elle sera seulement enregistrée.';
+  const iv = setInterval(() => {
+    const lvl = micLevel(); maxLvl = Math.max(maxLvl, lvl);
+    $('#mt-level').style.width = Math.round(Math.min(1, lvl * 8) * 100) + '%';
+    if (lvl > 0.02) loudMs += 200;
+    if (l && !l.gotResult && loudMs > 2500 && l.fallback()) { loudMs = 0; info.textContent = 'Je n’entendais rien : je passe en écoute directe du micro…'; }
+    const now = Date.now();
+    if (spoken && now - last > P.settings.silence * 1000) stop();
+    else if (!spoken && now - t0 > 15000) stop();
+  }, 200);
+  let stopping = null;
+  const stop = () => stopping || (stopping = (async () => {
+    clearInterval(iv); btn.disabled = true; info.textContent = 'Analyse…';
+    const recP = new Promise(r => {
+      if (!mr || mr.state === 'inactive') { r(null); return; }
+      mr.onstop = () => r(chunks.length ? new Blob(chunks, { type: mr.mimeType || 'audio/webm' }) : null);
+      try { mr.stop(); } catch (err) { r(null); }
+    });
+    if (l) said = await l.finish();
+    const blob = await recP;
+    closeMic(); micTest = null;
+    btn.disabled = false; btn.textContent = 'Tester le micro'; btn.classList.remove('primary');
+    $('#mt-level').style.width = '0%';
+    heard.textContent = said || '(rien de reconnu)';
+    if (blob) { au.src = URL.createObjectURL(blob); au.hidden = false; }
+    const how = !SR ? '' : (useLocalSR ? 'reconnaissance sur l’ordinateur' : 'reconnaissance en ligne') + (trackInputSupported === false ? ', écoute directe du micro' : '');
+    let verdict;
+    if (measured && maxLvl < 0.01) verdict = 'Le micro ne capte presque aucun son : vérifiez le micro choisi (et qu’il n’est pas coupé).';
+    else if (srError) verdict = 'Le micro capte du son, mais la reconnaissance vocale est indisponible (' + srError + ').';
+    else if (SR && !said) verdict = 'Le micro capte du son, mais rien n’a été reconnu : essayez un autre micro ou décochez « Reconnaissance vocale sur l’ordinateur ».';
+    else verdict = 'Le micro fonctionne.';
+    if (!keep) verdict += ' (Sur téléphone, pas d’enregistrement ni de niveau pendant la reconnaissance vocale : le micro ne peut servir qu’à une chose à la fois.)';
+    if (SR) {
+      const ev = evaluate(it, said);
+      const words = ev.words.map(wd => { const s = wordState(wd); return `<span class="w ${s === 'ok' ? 'hit' : s === 'near' ? 'near' : 'miss'}">${esc(wd.w)}</span>`; }).join(' ');
+      res.innerHTML = `<div>${words}</div><div class="muted">${Math.round(ev.score * 100)} % des mots reconnus · ${esc(how)}</div>`;
+    }
+    info.textContent = verdict;
+  })());
+  micTest = { stop };
+}
+$('#mt-text').value = P.settings.testText || DEFAULT_TEST;
+$('#mt-btn').addEventListener('click', toggleMicTest);
 
 // Installable app (PWA): works offline once opened. Only over HTTPS (GitHub Pages), not on the local server.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
