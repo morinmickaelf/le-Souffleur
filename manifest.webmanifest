@@ -1,0 +1,17 @@
+{
+  "name": "Le Souffleur",
+  "short_name": "Souffleur",
+  "description": "Répétez votre texte de théâtre : les autres personnages vous donnent la réplique.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f3f7",
+  "theme_color": "#8a1c2f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
