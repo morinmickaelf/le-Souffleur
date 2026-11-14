@@ -151,6 +151,7 @@ details pre { white-space: pre-wrap; background: var(--sunk); padding: 12px; bor
 .d-said { font-size: .78em; color: var(--warn); font-style: italic; margin: 0 2px; }
 .d-extra { font-size: .82em; color: var(--muted); font-style: italic; }
 .heard-line { font-size: .88rem; color: var(--muted); }
+.entry audio { width: 100%; max-width: 420px; height: 36px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: .85rem; }
 .hist { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .hist td, .hist th { padding: 6px; border-bottom: 1px solid var(--line); text-align: left; }
@@ -226,6 +227,7 @@ au début de chaque page.</pre>
         <div class="steps" style="gap:10px">
           <label class="field" for="rate">Débit des voix : <span id="rate-v"></span><input type="range" id="rate" min="0.7" max="1.4" step="0.05"></label>
           <label class="field" for="silence">Fin de ma réplique après un silence de : <span id="silence-v"></span><input type="range" id="silence" min="1" max="6" step="0.5"></label>
+          <label class="field" for="mic">Micro : <select id="mic"><option value="">Micro par défaut du système</option></select></label>
         </div>
         <div class="steps" style="gap:8px">
           <label class="check" for="opt-autoend"><input type="checkbox" id="opt-autoend"> Passer à la suite automatiquement après ma réplique</label>
@@ -233,6 +235,10 @@ au début de chaque page.</pre>
           <label class="check" for="opt-autohint"><input type="checkbox" id="opt-autohint"> Souffler les premiers mots si je reste muet 7 s</label>
           <label class="check" for="opt-stage"><input type="checkbox" id="opt-stage"> Lire les didascalies</label>
           <label class="check" for="opt-announce"><input type="checkbox" id="opt-announce"> Annoncer le nom avant chaque réplique</label>
+          <label class="check" for="opt-italian"><input type="checkbox" id="opt-italian"> Mode italienne : seulement la fin des répliques des autres, en accéléré</label>
+          <label class="check" for="opt-local"><input type="checkbox" id="opt-local"> Reconnaissance vocale sur l'ordinateur (plus rapide ; le français se télécharge à la première utilisation)</label>
+          <label class="check" for="opt-nomic"><input type="checkbox" id="opt-nomic"> S'entraîner sans micro : je dis ma réplique puis j'appuie sur Espace (non évalué)</label>
+          <label class="check" for="opt-record"><input type="checkbox" id="opt-record"> Enregistrer ma voix pour la réécouter dans le bilan</label>
           <label class="check" for="opt-sounds"><input type="checkbox" id="opt-sounds"> Bruitages des didascalies (téléphone qui sonne, qu'on décroche, numéro composé, qu'on raccroche, radio, chansons, télévision, télécommande, sonnette, on frappe, porte, fenêtre)</label>
           <div class="row" style="gap:6px;flex-wrap:wrap"><span class="muted small">Essayer :</span><button class="ghost" data-cue="phone">Téléphone</button><button class="ghost" data-cue="pickup">Décrocher</button><button class="ghost" data-cue="dial">Composer</button><button class="ghost" data-cue="hangup">Raccrocher</button><button class="ghost" data-cue="radio">Radio</button><button class="ghost" data-cue="station">Station</button><button class="ghost" data-cue="tv">Télévision</button><button class="ghost" data-cue="remote">Télécommande</button><button class="ghost" data-cue="song-solaar">MC Solaar</button><button class="ghost" data-cue="song-aznavour">Aznavour</button><button class="ghost" data-cue="song-sardou">Sardou</button><button class="ghost" data-cue="bell">Sonnette</button><button class="ghost" data-cue="knock">On frappe</button><button class="ghost" data-cue="door">Porte</button><button class="ghost" data-cue="window">Fenêtre</button></div>
         </div>
@@ -270,6 +276,7 @@ au début de chaque page.</pre>
         <div id="mine-tools" hidden>
           <div class="steps" style="gap:10px">
             <div class="progress" aria-hidden="true"><div id="turn-progress"></div></div>
+            <div class="progress" title="Niveau du micro" aria-hidden="true"><div id="mic-level" style="width:0%"></div></div>
             <div class="heard" id="heard" aria-live="polite"></div>
             <div class="turn-tools">
               <button id="btn-hint">Souffler <kbd>S</kbd></button>
@@ -315,9 +322,23 @@ au début de chaque page.</pre>
 /* ---------------------------------------------------------------- storage */
 const STORE = 'souffleur.v1';
 function loadStore() { try { return JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { return {}; } }
-function saveStore() { try { localStorage.setItem(STORE, JSON.stringify(P)); } catch (e) { /* storage unavailable */ } }
+let storeWarned = false;
+function saveStore() {
+  try { localStorage.setItem(STORE, JSON.stringify(P)); return true; }
+  catch (e) {
+    if (!storeWarned) {
+      storeWarned = true;
+      const msg = "Sauvegarde impossible (stockage du navigateur plein ou bloqué) : le texte, les réglages et l'historique ne seront pas conservés après fermeture.";
+      const w = document.getElementById('env-warn');
+      if (w) { w.hidden = false; w.innerHTML += (w.innerHTML ? '<br>' : '') + esc(msg); }
+      const c = document.getElementById('copy-msg');
+      if (c && !document.getElementById('view-report').hidden) c.textContent = msg;
+    }
+    return false;
+  }
+}
 const P = loadStore();
-P.settings = Object.assign({ rate: 1, silence: 2.5, autoEnd: true, showMine: false, autoHint: true, readStage: false, announce: false, sounds: true }, P.settings || {});
+P.settings = Object.assign({ rate: 1, silence: 2.5, autoEnd: true, showMine: false, autoHint: true, readStage: false, announce: false, italian: false, record: true, noMic: false, localSR: true, sounds: true }, P.settings || {});
 P.voices = P.voices || {};
 P.history = P.history || [];
 
@@ -1175,14 +1196,28 @@ function stopSounds() { liveSources.forEach(s => { try { s.stop(); } catch (e) {
 
 /* ---------------------------------------------------------------- speech recognition */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let micBlocked = false, trackInputSupported = null;
+let micBlocked = false, trackInputSupported = null, useLocalSR = false;
+// On-device recognition (Chrome 139+) answers much faster than the online service.
+async function prepareLocalSR() {
+  useLocalSR = false;
+  if (!P.settings.localSR || !SR || typeof SR.available !== 'function') return;
+  try {
+    const st = await SR.available({ langs: ['fr-FR'], processLocally: true });
+    if (st === 'available') useLocalSR = true;
+    else if ((st === 'downloadable' || st === 'downloading') && typeof SR.install === 'function') {
+      SR.install({ langs: ['fr-FR'], processLocally: true }).then(ok => { if (ok && P.settings.localSR) useLocalSR = true; }).catch(() => {});
+    }
+  } catch (err) { /* online recognition */ }
+}
 class Listener {
   constructor(onText, onFatal) { this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.interim = ''; this.active = false; this.endRes = null; }
   start() { this.active = true; this.make(); }
   make() {
     const r = new SR();
     r.lang = 'fr-FR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    if (useLocalSR) { try { r.processLocally = true; } catch (err) { /* unsupported */ } }
     r.onresult = (e) => {
+      this.gotResult = true;
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
@@ -1192,6 +1227,7 @@ class Listener {
       this.onText(this.text());
     };
     r.onerror = (e) => {
+      if (useLocalSR && ['language-not-supported', 'service-not-allowed'].includes(e.error)) { useLocalSR = false; return; }
       if (['not-allowed', 'service-not-allowed', 'audio-capture'].includes(e.error)) { this.active = false; this.onFatal(e.error); }
     };
     r.onend = () => {
@@ -1202,11 +1238,20 @@ class Listener {
     this.rec = r;
     // Feeding the already-open microphone track avoids a new permission prompt at every start (Chrome 135+).
     const track = micStream && micStream.getAudioTracks().find(t => t.readyState === 'live');
+    this.trackMode = false;
     if (track && trackInputSupported !== false) {
-      try { r.start(track); trackInputSupported = true; return; }
+      try { r.start(track); trackInputSupported = true; this.trackMode = true; return; }
       catch (err) { if (err.name !== 'TypeError') return; trackInputSupported = false; }
     }
     try { r.start(); } catch (err) { /* already started */ }
+  }
+  // Some microphones (headsets in particular) give the recognizer no usable sound through the track:
+  // the level meter hears the voice but nothing is transcribed. Switch to the browser's own capture.
+  fallback() {
+    if (!this.trackMode) return false;
+    trackInputSupported = false; this.trackMode = false;
+    try { this.rec.abort(); } catch (err) { /* onend restarts it */ }
+    return true;
   }
   text() { return (this.finals + ' ' + this.interim).replace(/\s+/g, ' ').trim(); }
   finish() {
@@ -1312,7 +1357,9 @@ function bindSettings() {
   show();
   rate.addEventListener('input', () => { s.rate = +rate.value; show(); saveStore(); });
   sil.addEventListener('input', () => { s.silence = +sil.value; show(); saveStore(); });
-  [['opt-autoend', 'autoEnd'], ['opt-showmine', 'showMine'], ['opt-autohint', 'autoHint'], ['opt-stage', 'readStage'], ['opt-announce', 'announce'], ['opt-sounds', 'sounds']].forEach(([id, k]) => {
+  fillMics();
+  $('#mic').addEventListener('change', (e) => { s.micId = e.target.value; trackInputSupported = null; saveStore(); });
+  [['opt-autoend', 'autoEnd'], ['opt-showmine', 'showMine'], ['opt-autohint', 'autoHint'], ['opt-stage', 'readStage'], ['opt-announce', 'announce'], ['opt-italian', 'italian'], ['opt-record', 'record'], ['opt-nomic', 'noMic'], ['opt-local', 'localSR'], ['opt-sounds', 'sounds']].forEach(([id, k]) => {
     const el = $('#' + id); el.checked = !!s[k];
     el.addEventListener('change', () => { s[k] = el.checked; saveStore(); });
   });
@@ -1324,23 +1371,91 @@ function show(view) { ['setup', 'run', 'report'].forEach(v => { $('#view-' + v).
 
 // The microphone is opened once per session and kept open, so the browser asks at most once
 // instead of at every reply (each speech recognition start would otherwise ask again).
-let micStream = null;
+let micStream = null, micCtx = null, micAnalyser = null, micBuf = null;
 async function openMic() {
+  if (P.settings.noMic) return;
   if (micStream || !SR || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-  try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); micBlocked = false; }
-  catch (err) { micBlocked = true; }
+  const base = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  const id = P.settings.micId;
+  try {
+    try { micStream = await navigator.mediaDevices.getUserMedia({ audio: id ? Object.assign({ deviceId: { exact: id } }, base) : base }); }
+    catch (err) { if (!id || err.name === 'NotAllowedError') throw err; micStream = await navigator.mediaDevices.getUserMedia({ audio: base }); }
+    micBlocked = false;
+  } catch (err) { micBlocked = true; return; }
+  try {
+    micCtx = new (window.AudioContext || window.webkitAudioContext)();
+    micAnalyser = micCtx.createAnalyser(); micAnalyser.fftSize = 1024;
+    micBuf = new Float32Array(micAnalyser.fftSize);
+    micCtx.createMediaStreamSource(micStream).connect(micAnalyser);
+    if (micCtx.state === 'suspended') micCtx.resume();
+  } catch (err) { micCtx = micAnalyser = null; }
+  fillMics();
+}
+function micLevel() {
+  if (!micAnalyser) return 0;
+  micAnalyser.getFloatTimeDomainData(micBuf);
+  let s = 0; for (let i = 0; i < micBuf.length; i++) s += micBuf[i] * micBuf[i];
+  return Math.sqrt(s / micBuf.length);
 }
 function closeMic() {
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (micCtx) { try { micCtx.close(); } catch (err) { /* already closed */ } micCtx = micAnalyser = null; }
+}
+async function fillMics() {
+  const sel = $('#mic');
+  if (!sel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try {
+    const ins = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && d.deviceId && !['default', 'communications'].includes(d.deviceId));
+    sel.innerHTML = '<option value="">Micro par défaut du système</option>' + ins.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Micro ' + (i + 1))}</option>`).join('');
+    sel.value = ins.some(d => d.deviceId === P.settings.micId) ? P.settings.micId : '';
+  } catch (err) { /* keep the default entry */ }
 }
 
-async function startSession(fromIdx) {
+// Recording of my own replies, on the microphone already open. Kept in memory for the current report only.
+let audioUrls = [];
+function startRecording() {
+  if (!P.settings.record || !micStream || !window.MediaRecorder) return null;
+  try {
+    const r = new MediaRecorder(micStream), chunks = [];
+    r.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    r.start();
+    return { r, chunks };
+  } catch (err) { return null; }
+}
+function stopRecording(h, keep) {
+  return new Promise(res => {
+    if (!h || h.r.state === 'inactive') { res(null); return; }
+    h.r.onstop = () => {
+      if (!keep || !h.chunks.length) { res(null); return; }
+      const url = URL.createObjectURL(new Blob(h.chunks, { type: h.r.mimeType || 'audio/webm' }));
+      audioUrls.push(url); res(url);
+    };
+    try { h.r.stop(); } catch (err) { res(null); }
+  });
+}
+function releaseAudio() { audioUrls.forEach(u => URL.revokeObjectURL(u)); audioUrls = []; }
+
+// Italian run-through: only the end of the other characters' replies, the cue to answer.
+function cueTail(t) {
+  const sentences = t.split(/(?<=[.!?…])\s+/).filter(s => /\S/.test(s));
+  if (!sentences.length) return t;
+  let tail = sentences[sentences.length - 1];
+  if (tail.split(/\s+/).length < 4 && sentences.length > 1) tail = sentences[sentences.length - 2] + ' ' + tail;
+  const words = tail.split(/\s+/);
+  return words.length > 14 ? words.slice(-12).join(' ') : tail;
+}
+
+// fromIdx / toIdx (exclusive) narrow the session inside the chosen pages.
+async function startSession(fromIdx, toIdx) {
   if (!play || !me) return;
+  releaseAudio();
   audio();
-  await openMic();
-  const { start, end } = getRange();
+  await Promise.all([openMic(), prepareLocalSR()]);
+  const range = getRange();
+  const start = fromIdx !== undefined ? Math.max(range.start, Math.min(fromIdx, range.end)) : range.start;
+  const end = toIdx !== undefined ? Math.max(start, Math.min(toIdx, range.end)) : range.end;
   P.startPage = play.pages[parseInt($('#start-page').value, 10) || 0]; saveStore();
-  session = { start, end, index: fromIdx !== undefined ? fromIdx : start, paused: false, entries: new Map(), startedAt: Date.now(), maxIdx: start };
+  session = { start, end, index: start, paused: false, entries: new Map(), startedAt: Date.now(), maxIdx: start };
   renderScript();
   show('run');
   runFrom(session.index);
@@ -1384,16 +1499,17 @@ async function runFrom(idx) {
       if (token !== runToken) return;
       if (r) record(it, r);
     } else if (it.type === 'reply') {
-      setStatus('talk', `${it.speaker} parle…`);
-      if (P.settings.announce) await speak(it.speaker.toLowerCase(), narratorCfg(), token, 1.1);
+      const italian = P.settings.italian;
+      setStatus('talk', `${it.speaker} parle…` + (italian ? ' (italienne)' : ''));
+      if (P.settings.announce && !italian) await speak(it.speaker.toLowerCase(), narratorCfg(), token, 1.1);
       if (token !== runToken) return;
-      await speak(it.spoken, voiceCfg(voiceOf(it)), token);
-      await pause(250);
-    } else if (it.type === 'stage' && P.settings.readStage) {
+      await speak(italian ? cueTail(it.spoken) : it.spoken, voiceCfg(voiceOf(it)), token, italian ? 1.35 : 1);
+      await pause(italian ? 80 : 250);
+    } else if (it.type === 'stage' && P.settings.readStage && !P.settings.italian) {
       setStatus('talk', 'Didascalie');
       await speak(it.text.replace(/[()[\]]/g, ''), narratorCfg(), token, 1.1);
     } else {
-      await pause(it.type === 'heading' ? 500 : 150);
+      await pause(P.settings.italian ? 60 : it.type === 'heading' ? 500 : 150);
     }
     if (token !== runToken) return;
     session.index++;
@@ -1454,20 +1570,23 @@ function renderMine() {
 function myTurn(it, token) {
   return new Promise(resolve => {
     const t0 = Date.now();
-    let last = 0, spoken = false, done = false, said = '', iv = null;
+    let last = 0, spoken = false, done = false, said = '', iv = null, rec = null;
     turn = { it, ev: null, reveal: 0, showAll: P.settings.showMine, hints: 0, revealedAll: P.settings.showMine, autoHinted: false, furthest: -1 };
     $('#heard').textContent = '';
     renderMine();
     const end = async (reason) => {
       if (done) return; done = true; clearInterval(iv);
       let text = said;
+      const ms = Date.now() - t0;
+      const audioP = stopRecording(rec, true);
       if (listener) { const l = listener; listener = null; text = await l.finish(); }
+      const audio = await audioP;
       if (token !== runToken) { resolve(null); return; }
       const t = turn; turn = null;
-      resolve({ said: text, reason, hints: t ? t.hints : 0, revealedAll: t ? t.revealedAll : false, ms: Date.now() - t0 });
+      resolve({ said: text, reason, hints: t ? t.hints : 0, revealedAll: t ? t.revealedAll : false, ms, audio });
     };
     turn.finish = () => end('manual');
-    turn.cancel = () => { if (!done) { done = true; clearInterval(iv); resolve(null); } };
+    turn.cancel = () => { if (!done) { done = true; clearInterval(iv); stopRecording(rec, false); resolve(null); } };
     turn.hint = () => {
       turn.hints++;
       turn.reveal = Math.max(turn.reveal, (turn.furthest + 1)) + 4;
@@ -1475,8 +1594,8 @@ function myTurn(it, token) {
     };
     turn.showEverything = () => { turn.showAll = true; turn.revealedAll = true; renderMine(); };
 
-    if (!SR || micBlocked) {
-      setStatus('', SR ? 'Micro refusé : dites votre texte puis appuyez sur Espace (non évalué).' : 'Pas de reconnaissance vocale dans ce navigateur : dites votre texte puis Espace (non évalué).');
+    if (P.settings.noMic || !SR || micBlocked) {
+      setStatus('', P.settings.noMic ? 'À vous : dites votre réplique puis appuyez sur Espace.' : SR ? 'Micro refusé : dites votre texte puis appuyez sur Espace (non évalué).' : 'Pas de reconnaissance vocale dans ce navigateur : dites votre texte puis Espace (non évalué).');
       turn.unscored = true;
       turn.finish = () => { if (!done) { done = true; turn = null; resolve(null); } };
       return;
@@ -1494,9 +1613,17 @@ function myTurn(it, token) {
       setStatus('', `Micro indisponible (${err}). Autorisez le micro dans le navigateur, puis appuyez sur Espace.`);
     });
     listener.start();
+    rec = startRecording();
+    let loudMs = 0;
     iv = setInterval(() => {
       if (token !== runToken) { end('aborted'); return; }
       const now = Date.now();
+      const lvl = micLevel();
+      $('#mic-level').style.width = Math.round(Math.min(1, lvl * 8) * 100) + '%';
+      if (lvl > 0.02) loudMs += 200;
+      if (listener && !listener.gotResult && loudMs > 2500 && listener.fallback()) {
+        loudMs = 0; setStatus('live', 'Je n’entendais rien : je passe en écoute directe du micro…');
+      }
       if (spoken && P.settings.autoEnd) {
         const quiet = now - last;
         if (turn && turn.tail && quiet > 800) end('tail');
@@ -1512,7 +1639,7 @@ function record(it, r) {
   const ev = evaluate(it, r.said);
   const skipped = !r.said.trim();
   const entry = session.entries.get(it.idx) || { it, attempts: [] };
-  entry.attempts.push({ said: r.said, ev, hints: r.hints, revealedAll: r.revealedAll, skipped, ms: r.ms });
+  entry.attempts.push({ said: r.said, ev, hints: r.hints, revealedAll: r.revealedAll, skipped, ms: r.ms, audio: r.audio || null });
   session.entries.set(it.idx, entry);
   const sc = document.getElementById('sc-' + it.idx);
   if (sc) sc.innerHTML = scoreChip(skipped ? 0 : ev.score);
@@ -1568,7 +1695,7 @@ function buildReport(s, reachedEnd) {
   const toLabel = play.pages[play.items[Math.min(s.maxIdx, play.items.length - 1)] ? play.items[Math.min(s.maxIdx, play.items.length - 1)].pi : 0];
   const dur = Math.round((Date.now() - s.startedAt) / 1000);
   const hist = { date: new Date().toISOString(), title: play.title, me, from: fromLabel, to: toLabel, count: entries.length, score, weak: weak.length, dur };
-  return { entries, weak, perfect, score, hints, count: entries.length, mineInRange, fromLabel, toLabel, dur, reachedEnd, hist, start: s.start, firstIdx: s.start };
+  return { entries, weak, perfect, score, hints, count: entries.length, mineInRange, fromLabel, toLabel, dur, reachedEnd, hist, start: s.start, firstIdx: s.start, maxIdx: s.maxIdx };
 }
 function fmtDur(sec) { const m = Math.floor(sec / 60), s = sec % 60; return m ? `${m} min ${String(s).padStart(2, '0')}` : `${s} s`; }
 
@@ -1608,6 +1735,7 @@ function entryHtml(e) {
     ${prevCue ? `<div class="heard-line">Après ${esc(prevCue.speaker)} : « ${esc(prevCue.spoken.length > 90 ? '…' + prevCue.spoken.slice(-90) : prevCue.spoken)} »</div>` : ''}
     <div class="diff">${diffHtml(a.ev)}</div>
     <div class="heard-line">Entendu : « ${esc(a.said || '—')} »</div>
+    ${a.audio ? `<audio controls preload="metadata" src="${esc(a.audio)}" aria-label="Réécouter ma réplique"></audio>` : ''}
   </article>`;
 }
 function renderReport(rep) {
@@ -1625,6 +1753,7 @@ function renderReport(rep) {
   $('#rep-weak').innerHTML = rep.weak.slice().sort((a, b) => (a.last.skipped ? 0 : a.last.ev.score) - (b.last.skipped ? 0 : b.last.ev.score)).map(entryHtml).join('');
   $('#rep-all').innerHTML = rep.entries.length ? rep.entries.map(entryHtml).join('') : '<p class="muted">Rien à afficher.</p>';
   $('#btn-retry-weak').hidden = !rep.weak.length;
+  $('#btn-again').textContent = rep.reachedEnd ? 'Rejouer le passage' : "Reprendre là où je me suis arrêté";
   $('#copy-msg').textContent = '';
   renderHistory();
 }
@@ -1662,7 +1791,8 @@ $('#btn-save-txt').addEventListener('click', () => {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 });
-$('#raw').addEventListener('input', () => setMsg('Texte modifié : cliquez sur « Analyser le texte ».'));
+// A text typed or pasted by hand is no longer the loaded file: its title comes from its first line again.
+$('#raw').addEventListener('input', () => { P.fileTitle = null; setMsg('Texte modifié : cliquez sur « Analyser le texte ».'); });
 $('#file-input').addEventListener('change', async (e) => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
   const input = $('#file-input'), parseBtn = $('#btn-parse');
@@ -1689,12 +1819,19 @@ $('#btn-stop').addEventListener('click', () => finishSession(false));
 $('#btn-hint').addEventListener('click', () => { if (turn && turn.hint) turn.hint(); });
 $('#btn-reveal').addEventListener('click', () => { if (turn && turn.showEverything) turn.showEverything(); });
 $('#btn-back').addEventListener('click', () => show('setup'));
-$('#btn-again').addEventListener('click', () => startSession());
+// Index of the reply just before idx (the cue), so that a restart gives the line to answer to.
+function cueBefore(idx) {
+  let k = idx - 1; while (k > 0 && play.items[k].type !== 'reply') k--;
+  return k >= 0 && play.items[k] && play.items[k].type === 'reply' ? k : idx;
+}
+$('#btn-again').addEventListener('click', () => {
+  if (!lastReport || lastReport.reachedEnd) { startSession(); return; }
+  startSession(cueBefore(lastReport.maxIdx));
+});
 $('#btn-retry-weak').addEventListener('click', () => {
   if (!lastReport || !lastReport.weak.length) return;
   const target = lastReport.weak[0].it.idx;
-  let k = target - 1; while (k > 0 && play.items[k].type !== 'reply') k--;
-  startSession(Math.max(getRange().start, Math.min(k, target)));
+  startSession(cueBefore(target), target + 1);
 });
 $('#btn-copy').addEventListener('click', () => {
   if (!lastReport) return;

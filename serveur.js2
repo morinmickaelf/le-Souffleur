@@ -16,5 +16,5 @@ http.createServer((req, res) => {
 }).listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}/`;
   console.log(`Le Souffleur est ouvert sur ${url} (fermez cette fenêtre pour l'arrêter)`);
-  exec(`start "" msedge ${url}`, (e) => { if (e) exec(`start "" ${url}`); });
+  exec(`start "" chrome ${url}`, (e) => { if (e) exec(`start "" ${url}`); });
 });
