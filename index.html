@@ -1229,9 +1229,30 @@ async function prepareLocalSR() {
   } catch (err) { /* online recognition */ }
 }
 class Listener {
-  constructor(onText, onFatal) { this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.interim = ''; this.active = false; this.endRes = null; this.log = []; }
+  constructor(onText, onFatal) { this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.interim = ''; this.active = false; this.endRes = null; this.log = []; this.base = 0; this.count = 0; this.finalRes = null; }
   start() { this.active = true; this.make(); }
+  // Session mode: the recognizer stays on between my replies, so it is already listening when my turn starts.
+  // reset() forgets what was heard before (the other voices, the cues) and starts a new reply.
+  reset(onText, onFatal) {
+    this.onText = onText; this.onFatal = onFatal; this.finals = ''; this.gotResult = false;
+    if (this.interim) {
+      // A phrase is still being recognized (the end of a voice heard through the speakers): restart on a clean slate.
+      this.interim = ''; this.rec.onresult = null;
+      try { this.rec.abort(); } catch (err) { /* onend restarts it */ }
+    } else this.base = this.count;
+  }
+  // Ends my reply without stopping the recognizer: waits briefly for the phrase in progress to settle.
+  take() {
+    const done = () => { const t = this.text(); this.onText = () => {}; this.finalRes = null; return t; };
+    if (!this.interim) return Promise.resolve(done());
+    return new Promise(res => {
+      const finish = () => { if (this.finalRes) { if (this.interim) { this.finals += ' ' + this.interim; this.interim = ''; } res(done()); } };
+      this.finalRes = finish;
+      setTimeout(finish, 400);
+    });
+  }
   make() {
+    this.base = 0; this.count = 0;
     const r = new SR();
     r.lang = 'fr-FR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
     if (useLocalSR) { try { r.processLocally = true; } catch (err) { /* unsupported */ } }
@@ -1242,14 +1263,17 @@ class Listener {
     r.addEventListener('error', (e) => note('error:' + e.error));
     r.addEventListener('result', () => { if (!this.gotResult) note('result'); });
     r.onresult = (e) => {
-      this.gotResult = true;
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      this.count = e.results.length;
+      let interim = '', gotFinal = false;
+      for (let i = Math.max(e.resultIndex, this.base); i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) this.finals += ' ' + t; else interim += t;
+        if (e.results[i].isFinal) { this.finals += ' ' + t; gotFinal = true; } else interim += t;
       }
+      if (e.results.length <= this.base) return;
+      this.gotResult = true;
       this.interim = interim;
       this.onText(this.text());
+      if (gotFinal && !interim && this.finalRes) this.finalRes();
     };
     r.onerror = (e) => {
       if (useLocalSR && ['language-not-supported', 'service-not-allowed'].includes(e.error)) { useLocalSR = false; return; }
@@ -1257,6 +1281,7 @@ class Listener {
     };
     r.onend = () => {
       if (this.interim) { this.finals += ' ' + this.interim; this.interim = ''; }
+      if (this.finalRes) this.finalRes();
       if (this.active) setTimeout(() => { if (this.active) { try { this.make(); } catch (err) { /* retry on next end */ } } }, 120);
       else if (this.endRes) this.endRes();
     };
@@ -1296,6 +1321,15 @@ function isMine(it) { return it.type === 'reply' && (it.speaker === me || !!(it.
 function voiceOf(it) { return it.parts ? (it.parts.find(s => s !== me) || it.parts[0]) : it.speaker; }
 let session = null;   // { start, end, index, paused, entries: Map, startedAt }
 let runToken = 0, listener = null, turn = null;
+// Recognizer kept on for the whole session (computer only: on phones the microphone serves one capture at a time).
+let sessionListener = null;
+function openSessionListener() {
+  closeSessionListener();
+  if (!SR || MOBILE || P.settings.noMic || micBlocked || !micStream) return;
+  sessionListener = new Listener(() => {}, () => {});
+  sessionListener.start();
+}
+function closeSessionListener() { if (sessionListener) { sessionListener.abort(); sessionListener = null; } }
 
 function setMsg(t) { $('#parse-msg').textContent = t; }
 function titleFrom(raw, fallback) {
@@ -1481,6 +1515,7 @@ async function startSession(fromIdx, toIdx) {
   releaseAudio();
   audio();
   await Promise.all([openMic(), prepareLocalSR()]);
+  openSessionListener();
   const range = getRange();
   const start = fromIdx !== undefined ? Math.max(range.start, Math.min(fromIdx, range.end)) : range.start;
   const end = toIdx !== undefined ? Math.max(start, Math.min(toIdx, range.end)) : range.end;
@@ -1508,7 +1543,7 @@ function stopAll() {
   runToken++;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   stopSounds();
-  if (listener) { listener.abort(); listener = null; }
+  if (listener) { if (listener === sessionListener) listener.onText = () => {}; else listener.abort(); listener = null; }
   if (turn) { turn.cancel(); turn = null; }
 }
 
@@ -1609,7 +1644,7 @@ function myTurn(it, token) {
       let text = said;
       const ms = Date.now() - t0;
       const audioP = stopRecording(rec, true);
-      if (listener) { const l = listener; listener = null; text = await l.finish(); }
+      if (listener) { const l = listener; listener = null; text = await (l === sessionListener ? l.take() : l.finish()); }
       const audio = await audioP;
       if (token !== runToken) { resolve(null); return; }
       const t = turn; turn = null;
@@ -1631,18 +1666,27 @@ function myTurn(it, token) {
       return;
     }
     setStatus('live', 'À vous. Je vous écoute…');
-    listener = new Listener((text) => {
+    // Scoring and redrawing once per frame: the recognizer can send several partial results between two frames.
+    let pendingText = null;
+    const onText = (text) => {
       if (token !== runToken || done) return;
       said = text; last = Date.now(); spoken = spoken || text.length > 0;
-      $('#heard').textContent = text;
-      turn.ev = evaluate(it, text);
-      turn.tail = tailReached(turn.ev);
-      renderMine();
-    }, (err) => {
+      if (pendingText === null) requestAnimationFrame(() => {
+        const t = pendingText; pendingText = null;
+        if (token !== runToken || done || !turn) return;
+        $('#heard').textContent = t;
+        turn.ev = evaluate(it, t);
+        turn.tail = tailReached(turn.ev);
+        renderMine();
+      });
+      pendingText = text;
+    };
+    const onFatal = (err) => {
       micBlocked = true;
       setStatus('', `Micro indisponible (${err}). Autorisez le micro dans le navigateur, puis appuyez sur Espace.`);
-    });
-    listener.start();
+    };
+    if (sessionListener && sessionListener.active) { listener = sessionListener; listener.reset(onText, onFatal); }
+    else { listener = new Listener(onText, onFatal); listener.start(); }
     rec = startRecording();
     let loudMs = 0;
     iv = setInterval(() => {
@@ -1656,7 +1700,7 @@ function myTurn(it, token) {
       }
       if (spoken && P.settings.autoEnd) {
         const quiet = now - last;
-        if (turn && turn.tail && quiet > 800) end('tail');
+        if (turn && turn.tail && quiet > 600) end('tail');
         else if (quiet > P.settings.silence * 1000) end('silence');
       } else if (!spoken && turn && P.settings.autoHint && !turn.autoHinted && now - t0 > 7000) {
         turn.autoHinted = true; turn.hint(); setStatus('live', 'Je vous souffle le début…');
@@ -1703,6 +1747,7 @@ function togglePause() {
 function finishSession(reachedEnd) {
   if (!session) return;
   stopAll();
+  closeSessionListener();
   closeMic();
   const s = session; session = null;
   const rep = buildReport(s, reachedEnd);
